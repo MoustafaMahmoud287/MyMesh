@@ -1,0 +1,22 @@
+# Visual Studio temporary files
+.vs/
+Debug/
+Release/
+x64/
+*.user
+*.sln
+*.vcxproj
+*.filters
+*.suo
+*.db
+*.opendb
+
+# Compiled binaries
+*.exe
+*.obj
+*.pdb
+*.ilk
+
+# Build folders
+build/
+bin/

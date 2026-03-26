@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cmath>
 #include <algorithm>
+#include <Eigen/Sparse>
 
 #include "mesh.h"
 
@@ -292,7 +293,13 @@ void testVertexCirculator1() {
     assertTest(found_v0 && found_v2 && found_v3, "Circulator found the correct neighbor vertices");
 }
 
+void testEigen() {
+    Eigen::SparseMatrix<float> testMatrix(10, 10);
+
+}
+
 int main() {
+    testEigen();
     std::cout << "========================================" << std::endl;
     std::cout << "   TITAN MESH ENGINE - INTEGRATION TEST   " << std::endl;
     std::cout << "========================================" << std::endl;

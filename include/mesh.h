@@ -20,6 +20,12 @@ namespace Geometry {
         FaceHandle addTriangle(VertexHandle v1, VertexHandle v2, VertexHandle v3); // sorted counter clockwise
         void finalizeBoundaries();
 
+        // size access
+        size_t verticesCount() const;
+        size_t halfEdgeCount() const;
+        size_t edgesCount() const;
+        size_t facesCount() const;
+
         // topology navigation 
         VertexHandle getVertexHandle(HandleIndexType index) const;
         HalfEdgeHandle getHalfEdgeHandle(HandleIndexType index) const;
@@ -41,6 +47,7 @@ namespace Geometry {
         FaceGlobalRange faces() const;
         VertexCirculatorRange surroundingVertices(VertexHandle vertex) const;
         FaceCirculatorRange surroundingFaces(FaceHandle face) const;
+        FaceToHalfEdgeCirculatorRange surroundingHalfEdges(FaceHandle face) const;
         HalfEdgeCirculatorRange outgoingHalfEdges(VertexHandle vertex) const;
 
         // property access 

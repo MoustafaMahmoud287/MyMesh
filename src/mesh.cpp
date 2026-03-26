@@ -178,6 +178,22 @@ namespace Geometry {
         }
     }
 
+    size_t Mesh::verticesCount() const{
+        return m_vertex_data.position_x.size();
+    }
+
+    size_t Mesh::halfEdgeCount() const{
+        return m_half_edge_data.twin.size();
+    }
+
+    size_t Mesh::edgesCount() const{
+        return halfEdgeCount() / 2;
+    }
+
+    size_t Mesh::facesCount() const{
+        return m_face_data.start_half_edge.size();
+    }
+
     VertexHandle Mesh::getVertexHandle(HandleIndexType index) const {
         if (index >= 0 && index < m_vertex_data.position_x.size()) {
             return VertexHandle(index);
@@ -272,6 +288,11 @@ namespace Geometry {
     FaceCirculatorRange Mesh::surroundingFaces(FaceHandle face) const {
         assert(face.isValid() && "invalid handle");
         return FaceCirculatorRange(this, getHalfEdge(face));
+    }
+
+    FaceToHalfEdgeCirculatorRange Mesh::surroundingHalfEdges(FaceHandle face) const {
+        assert(face.isValid() && "invalid handle");
+        return FaceToHalfEdgeCirculatorRange(this, getHalfEdge(face));
     }
 
     HalfEdgeCirculatorRange Mesh::outgoingHalfEdges(VertexHandle vertex) const {

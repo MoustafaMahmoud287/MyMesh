@@ -20,7 +20,16 @@ namespace myMesh {
         }
 
         float barycentricDualArea(const Geometry::Mesh& mesh, Geometry::VertexHandle vertex) {
-            return 0.0f;
+            
+            float dual_area = 0.0f;
+
+            for (auto face : mesh.surroundingFaces(vertex)) {
+                dual_area += faceArea(mesh, face);
+            }
+
+            dual_area *= (1.0f / 3.0f);
+
+            return dual_area;
         }
 
     }

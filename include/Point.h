@@ -81,3 +81,7 @@ struct Point {
 };
 
 inline Point operator*(float s, const Point& v) { return v * s; }
+
+inline float dot(const Point& p1, const Point& p2) { return p1.dot(p2); }
+
+inline Point cross(Point& p1, const Point& p2) { return p1.cross(p2); }

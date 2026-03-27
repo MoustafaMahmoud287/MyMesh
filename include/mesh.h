@@ -46,10 +46,11 @@ namespace Geometry {
         HalfEdgeGlobalRange halfEdges() const;
         FaceGlobalRange faces() const;
         VertexCirculatorRange surroundingVertices(VertexHandle vertex) const;
+        VertexToFaceCirculatorRange surroundingFaces(VertexHandle vertex) const;
+        HalfEdgeCirculatorRange outgoingHalfEdges(VertexHandle vertex) const;
         FaceCirculatorRange surroundingFaces(FaceHandle face) const;
         FaceToHalfEdgeCirculatorRange surroundingHalfEdges(FaceHandle face) const;
         FaceToVertexCirculatorRange surroundingVertices(FaceHandle face) const;
-        HalfEdgeCirculatorRange outgoingHalfEdges(VertexHandle vertex) const;
 
         // property access 
         template <typename T>

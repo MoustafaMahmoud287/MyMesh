@@ -13,6 +13,7 @@
 #include "Utils.h" 
 #include "GlobalIterator.h"
 #include "VertexCirculator.h"
+#include "VertexToFaceCirculator.h"
 #include "FaceCirculator.h"
 #include "FaceToHalfEdgeCirculator.h"
 #include "FaceToVertexCirculator.h"

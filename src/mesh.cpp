@@ -285,6 +285,16 @@ namespace Geometry {
         return VertexCirculatorRange(this, getHalfEdge(vertex));
     }
 
+    VertexToFaceCirculatorRange Mesh::surroundingFaces(VertexHandle vertex) const {
+        assert(vertex.isValid() && "invalid handle");
+        return VertexToFaceCirculatorRange(this, getHalfEdge(vertex));
+    }
+
+    HalfEdgeCirculatorRange Mesh::outgoingHalfEdges(VertexHandle vertex) const {
+        assert(vertex.isValid() && "invalid handle");
+        return HalfEdgeCirculatorRange(this, getHalfEdge(vertex));
+    }
+
     FaceCirculatorRange Mesh::surroundingFaces(FaceHandle face) const {
         assert(face.isValid() && "invalid handle");
         return FaceCirculatorRange(this, getHalfEdge(face));
@@ -300,10 +310,6 @@ namespace Geometry {
         return FaceToVertexCirculatorRange(this, getHalfEdge(face));
     }
 
-    HalfEdgeCirculatorRange Mesh::outgoingHalfEdges(VertexHandle vertex) const {
-        assert(vertex.isValid() && "invalid handle");
-        return HalfEdgeCirculatorRange(this, getHalfEdge(vertex));
-    }
 
     const std::vector<float>& Mesh::getVertexData(VertexGeometryAttribute attr) const {
         switch (attr) {

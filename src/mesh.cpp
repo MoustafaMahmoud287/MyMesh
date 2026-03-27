@@ -295,6 +295,11 @@ namespace Geometry {
         return FaceToHalfEdgeCirculatorRange(this, getHalfEdge(face));
     }
 
+    FaceToVertexCirculatorRange Mesh::surroundingVertices(FaceHandle face) const {
+        assert(face.isValid() && "invalid handle");
+        return FaceToVertexCirculatorRange(this, getHalfEdge(face));
+    }
+
     HalfEdgeCirculatorRange Mesh::outgoingHalfEdges(VertexHandle vertex) const {
         assert(vertex.isValid() && "invalid handle");
         return HalfEdgeCirculatorRange(this, getHalfEdge(vertex));

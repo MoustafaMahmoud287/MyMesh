@@ -48,6 +48,7 @@ namespace Geometry {
         VertexCirculatorRange surroundingVertices(VertexHandle vertex) const;
         FaceCirculatorRange surroundingFaces(FaceHandle face) const;
         FaceToHalfEdgeCirculatorRange surroundingHalfEdges(FaceHandle face) const;
+        FaceToVertexCirculatorRange surroundingVertices(FaceHandle face) const;
         HalfEdgeCirculatorRange outgoingHalfEdges(VertexHandle vertex) const;
 
         // property access 

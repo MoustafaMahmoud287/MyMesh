@@ -15,6 +15,7 @@
 #include "VertexCirculator.h"
 #include "FaceCirculator.h"
 #include "FaceToHalfEdgeCirculator.h"
+#include "FaceToVertexCirculator.h"
 #include "HalfEdgeCirculator.h"
 
 namespace Geometry {

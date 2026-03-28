@@ -50,5 +50,24 @@ namespace MyMesh {
             d1.setFromTriplets(triplet_list.begin(), triplet_list.end());
             return d1;
         }
+
+        SparseMatrix<float> CPUSolver::buildHodgeStar0(const Geometry::Mesh& mesh) {
+
+            auto nVertices = mesh.verticesCount();
+
+            SparseMatrix<float> hodge0(nVertices, nVertices);
+
+            std::vector<Eigen::Triplet<float>> triplet_list;
+            triplet_list.reserve(nVertices);
+
+            for (auto vertex : mesh.vertices()) {
+                triplet_list.push_back(Eigen::Triplet<float>(vertex.idx(), vertex.idx(), Math::barycentricDualArea(mesh, vertex)));
+            }
+
+
+            hodge0.setFromTriplets(triplet_list.begin(), triplet_list.end());
+
+            return hodge0;
+        }
     }
 }

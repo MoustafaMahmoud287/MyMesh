@@ -1,7 +1,7 @@
 #pragma once
 #include "Mesh.h"
 
-namespace myMesh {
+namespace MyMesh {
     namespace Math {
 
         float faceArea(const Geometry::Mesh& mesh, Geometry::FaceHandle face);

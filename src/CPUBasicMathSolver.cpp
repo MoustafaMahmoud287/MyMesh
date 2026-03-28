@@ -94,5 +94,27 @@ namespace MyMesh {
 
             return hodge1;
         }
+
+        SparseMatrix<float> CPUSolver::buildHodgeStar2(const Geometry::Mesh& mesh) {
+
+            auto nFaces = mesh.facesCount();
+            
+            SparseMatrix<float> hodge2(nFaces, nFaces);
+
+            std::vector<Eigen::Triplet<float>> triplet_list;
+            triplet_list.reserve(nFaces);
+
+            for (auto face : mesh.faces()) {
+
+                float area = Math::faceArea(mesh, face);
+                float safe_area = std::max(area, 1e-8f);
+
+                triplet_list.push_back(Eigen::Triplet<float>(face.idx(), face.idx(), 1.0f / safe_area));
+            }
+            
+            hodge2.setFromTriplets(triplet_list.begin(), triplet_list.end());
+
+            return hodge2;
+        }
     }
 }

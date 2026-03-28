@@ -2,6 +2,7 @@
 
 namespace MyMesh {
     namespace MathInternal {
+
         SparseMatrix<float> CPUSolver::buildD0(const Geometry::Mesh& mesh) {
             
             auto nEdges = mesh.edgesCount();
@@ -68,6 +69,30 @@ namespace MyMesh {
             hodge0.setFromTriplets(triplet_list.begin(), triplet_list.end());
 
             return hodge0;
+        }
+
+        SparseMatrix<float> CPUSolver::buildHodgeStar1(const Geometry::Mesh& mesh) {
+
+            auto nEdges = mesh.edgesCount();
+
+            SparseMatrix<float> hodge1(nEdges, nEdges);
+
+            std::vector<Eigen::Triplet<float>> triplet_list;
+            triplet_list.reserve(nEdges);
+
+            for (auto edge_index = 0; edge_index < nEdges; edge_index++) {
+                
+                auto halfedge1 = mesh.getHalfEdgeHandle(edge_index * 2);
+                auto halfedge2 = mesh.getHalfEdgeHandle(edge_index * 2 + 1);
+
+                float cotan_weight = 0.5f * (Math::cotan(mesh, halfedge1) + Math::cotan(mesh, halfedge2));
+                
+                triplet_list.push_back(Eigen::Triplet<float>(edge_index, edge_index, cotan_weight));
+            }
+
+            hodge1.setFromTriplets(triplet_list.begin(), triplet_list.end());
+
+            return hodge1;
         }
     }
 }

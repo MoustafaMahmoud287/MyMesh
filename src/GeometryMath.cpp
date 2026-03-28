@@ -32,5 +32,26 @@ namespace MyMesh {
             return dual_area;
         }
 
+        float cotan(const Geometry::Mesh& mesh, Geometry::HalfEdgeHandle halfedge) {
+
+            float sigma = 1e-7;
+            float result = 0.0f;
+
+            if (mesh.isInteriorHalfEdge(halfedge)) {
+                auto v1 = mesh.getVertexCopy(mesh.toVertex(halfedge)); halfedge = mesh.next(halfedge);
+                auto v2 = mesh.getVertexCopy(mesh.toVertex(halfedge)); halfedge = mesh.next(halfedge);
+                auto v3 = mesh.getVertexCopy(mesh.toVertex(halfedge));
+
+                auto vector1 = v1 - v2;
+                auto vector2 = v3 - v2;
+
+                float cross_result = cross(vector1, vector2).length();
+                float dot_result = dot(vector1, vector2);
+
+                if (cross_result >= sigma) result = dot_result / cross_result;
+            }
+
+            return result;
+        }
     }
 }

@@ -253,6 +253,16 @@ namespace Geometry {
         return FaceHandle{ m_half_edge_data.face[halfedge.idx()] };
     }
 
+    bool Mesh::isInteriorHalfEdge(HalfEdgeHandle halfedge) const {
+        return (halfedge.isValid()) && (face(halfedge).isValid());
+    }
+
+    bool Mesh::isBoundaryEdge(HandleIndexType edge_index) const {
+        auto he1 = getHalfEdgeHandle(edge_index * 2);
+        auto he2 = twin(he1);
+        return (!isInteriorHalfEdge(he1)) || (!isInteriorHalfEdge(he2));
+    }
+
     Point Mesh::getVertexCopy(VertexHandle vertex) const {
         assert(vertex.isValid() && "Invalid Vertex Handle!");
         if (!vertex.isValid()) return Point{ -1,-1,-1 };

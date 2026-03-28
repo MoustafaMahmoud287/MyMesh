@@ -36,6 +36,8 @@ namespace Geometry {
         HalfEdgeHandle twin(HalfEdgeHandle halfedge) const;
         VertexHandle   toVertex(HalfEdgeHandle halfedge) const;
         FaceHandle     face(HalfEdgeHandle halfedge) const;
+        bool isInteriorHalfEdge(HalfEdgeHandle halfedge) const;
+        bool isBoundaryEdge(HandleIndexType edge_index) const;
 
         // geometry access
         Point getVertexCopy(VertexHandle vertex) const;

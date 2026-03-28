@@ -1,13 +1,5 @@
 #pragma once
-
-#include <Eigen/Sparse>
-#include <vector>
-
-#include "Mesh.h" 
-#include "GeometryMath.h"
-
-template<typename T>
-using SparseMatrix = Eigen::SparseMatrix<T>;
+#include "CPUSolverInternals.h"
 
 namespace MyMesh {
     namespace MathInternal {
@@ -17,27 +9,23 @@ namespace MyMesh {
             ~CPUSolver() = default;
 
             // 1. TOPOLOGICAL OPERATORS 
-            SparseMatrix<float> buildD0(const Geometry::Mesh& mesh);
-            SparseMatrix<float> buildD1(const Geometry::Mesh& mesh);
+            const CPUSparseMatrix& buildD0(const Geometry::Mesh& mesh);
+            const CPUSparseMatrix& buildD1(const Geometry::Mesh& mesh);
 
             // 2. GEOMETRIC OPERATORS
-            SparseMatrix<float> buildHodgeStar0(const Geometry::Mesh& mesh);
-            SparseMatrix<float> buildHodgeStar1(const Geometry::Mesh& mesh);
-            SparseMatrix<float> buildHodgeStar2(const Geometry::Mesh& mesh);
+            const CPUSparseMatrix& buildHodgeStar0(const Geometry::Mesh& mesh);
+            const CPUSparseMatrix& buildHodgeStar1(const Geometry::Mesh& mesh);
+            const CPUSparseMatrix& buildHodgeStar2(const Geometry::Mesh& mesh);
 
-            // 3. METRIC OPERATORS
-            SparseMatrix<float> buildMassMatrix(const Geometry::Mesh& mesh);
-            SparseMatrix<float> buildCotangentLaplacian(const Geometry::Mesh& mesh);
+            // 3. CORE MATH (Only takes and returns pure Eigen / std::vector types!) (still not implemented yet)
+            CPUSparseMatrix multiply(const CPUSparseMatrix& A, const CPUSparseMatrix& B);
+            std::vector<CPUFloat> multiply(const CPUSparseMatrix& A, const std::vector<CPUFloat>& x);
+            std::vector<CPUFloat> solveLinearSystem(const CPUSparseMatrix& A, const std::vector<CPUFloat>& b);
 
-            // 4. CORE MATH (Only takes and returns pure Eigen / std::vector types!)
-            SparseMatrix<float> multiply(const Eigen::SparseMatrix<float>& A,
-                const Eigen::SparseMatrix<float>& B);
+        private:
 
-            std::vector<float> multiply(const Eigen::SparseMatrix<float>& A,
-                const std::vector<float>& x);
+            CPUCache m_cache;
 
-            std::vector<float> solveLinearSystem(const Eigen::SparseMatrix<float>& A,
-                const std::vector<float>& b);
         };
     }
 }

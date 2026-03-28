@@ -3,118 +3,151 @@
 namespace MyMesh {
     namespace MathInternal {
 
-        SparseMatrix<float> CPUSolver::buildD0(const Geometry::Mesh& mesh) {
+        const CPUSparseMatrix& CPUSolver::buildD0(const Geometry::Mesh& mesh) {
             
-            auto nEdges = mesh.edgesCount();
-            auto nVertices = mesh.verticesCount();
+            auto& cache_entry = m_cache[mesh.getID()];
 
-            SparseMatrix<float> d0(nEdges, nVertices);
-            std::vector<Eigen::Triplet<float>> triplet_list;
-            triplet_list.reserve(nEdges * 2);
-            
-            for (Geometry::HandleIndexType edge_index = 0; edge_index < nEdges; edge_index++) {
-                
-                auto half_edge_1 = mesh.getHalfEdgeHandle(edge_index * 2);
-                auto half_edge_2 = mesh.twin(half_edge_1);
+            if (cache_entry.d0_version != mesh.getTopologyVersion()) {
 
-                triplet_list.push_back(Eigen::Triplet<float>(edge_index, mesh.toVertex(half_edge_1).idx(), 1.0f));
-                triplet_list.push_back(Eigen::Triplet<float>(edge_index, mesh.toVertex(half_edge_2).idx(), -1.0f));
-            }
+                auto nEdges = mesh.edgesCount();
+                auto nVertices = mesh.verticesCount();
 
-            d0.setFromTriplets(triplet_list.begin(), triplet_list.end());
-            return d0;
-        }
+                cache_entry.d0.resize(nEdges, nVertices);
 
+                std::vector<CPUTriplet> triplet_list;
+                triplet_list.reserve(nEdges * 2);
 
-        SparseMatrix<float> CPUSolver::buildD1(const Geometry::Mesh& mesh) {
-            
-            auto nEdges = mesh.edgesCount();
-            auto nFaces = mesh.facesCount();
+                for (Geometry::HandleIndexType edge_index = 0; edge_index < nEdges; edge_index++) {
 
-            SparseMatrix<float> d1(nFaces, nEdges);
-            std::vector<Eigen::Triplet<float>> triplet_list;
-            triplet_list.reserve(nFaces * 3);
+                    auto half_edge_1 = mesh.getHalfEdgeHandle(edge_index * 2);
+                    auto half_edge_2 = mesh.twin(half_edge_1);
 
-            for (auto face : mesh.faces()) {
-
-                auto face_index = face.idx();
-
-                for (auto half_edge : mesh.surroundingHalfEdges(face)) {
-
-                    auto edge_index = half_edge.idx() / 2;
-                    float orientation = half_edge.idx() % 2 == 0 ? 1.0f : -1.0f;
-
-                    triplet_list.push_back(Eigen::Triplet<float>(face_index, edge_index, orientation));
+                    triplet_list.push_back(CPUTriplet(edge_index, mesh.toVertex(half_edge_1).idx(), 1.0f));
+                    triplet_list.push_back(CPUTriplet(edge_index, mesh.toVertex(half_edge_2).idx(), -1.0f));
                 }
+
+                cache_entry.d0.setFromTriplets(triplet_list.begin(), triplet_list.end());
+                cache_entry.d0_version = mesh.getTopologyVersion();
             }
 
-            d1.setFromTriplets(triplet_list.begin(), triplet_list.end());
-            return d1;
+            return cache_entry.d0;
         }
 
-        SparseMatrix<float> CPUSolver::buildHodgeStar0(const Geometry::Mesh& mesh) {
 
-            auto nVertices = mesh.verticesCount();
-
-            SparseMatrix<float> hodge0(nVertices, nVertices);
-
-            std::vector<Eigen::Triplet<float>> triplet_list;
-            triplet_list.reserve(nVertices);
-
-            for (auto vertex : mesh.vertices()) {
-                triplet_list.push_back(Eigen::Triplet<float>(vertex.idx(), vertex.idx(), Math::barycentricDualArea(mesh, vertex)));
-            }
-
-
-            hodge0.setFromTriplets(triplet_list.begin(), triplet_list.end());
-
-            return hodge0;
-        }
-
-        SparseMatrix<float> CPUSolver::buildHodgeStar1(const Geometry::Mesh& mesh) {
-
-            auto nEdges = mesh.edgesCount();
-
-            SparseMatrix<float> hodge1(nEdges, nEdges);
-
-            std::vector<Eigen::Triplet<float>> triplet_list;
-            triplet_list.reserve(nEdges);
-
-            for (auto edge_index = 0; edge_index < nEdges; edge_index++) {
-                
-                auto halfedge1 = mesh.getHalfEdgeHandle(edge_index * 2);
-                auto halfedge2 = mesh.getHalfEdgeHandle(edge_index * 2 + 1);
-
-                float cotan_weight = 0.5f * (Math::cotan(mesh, halfedge1) + Math::cotan(mesh, halfedge2));
-                
-                triplet_list.push_back(Eigen::Triplet<float>(edge_index, edge_index, cotan_weight));
-            }
-
-            hodge1.setFromTriplets(triplet_list.begin(), triplet_list.end());
-
-            return hodge1;
-        }
-
-        SparseMatrix<float> CPUSolver::buildHodgeStar2(const Geometry::Mesh& mesh) {
-
-            auto nFaces = mesh.facesCount();
+        const CPUSparseMatrix& CPUSolver::buildD1(const Geometry::Mesh& mesh) {
             
-            SparseMatrix<float> hodge2(nFaces, nFaces);
+            auto& cache_entry = m_cache[mesh.getID()];
 
-            std::vector<Eigen::Triplet<float>> triplet_list;
-            triplet_list.reserve(nFaces);
+            if (cache_entry.d1_version != mesh.getTopologyVersion()) {
 
-            for (auto face : mesh.faces()) {
+                auto nEdges = mesh.edgesCount();
+                auto nFaces = mesh.facesCount();
 
-                float area = Math::faceArea(mesh, face);
-                float safe_area = std::max(area, 1e-8f);
+                cache_entry.d1.resize(nFaces, nEdges);
 
-                triplet_list.push_back(Eigen::Triplet<float>(face.idx(), face.idx(), 1.0f / safe_area));
+                std::vector<CPUTriplet> triplet_list;
+                triplet_list.reserve(nFaces * 3);
+
+                for (auto face : mesh.faces()) {
+
+                    auto face_index = face.idx();
+
+                    for (auto half_edge : mesh.surroundingHalfEdges(face)) {
+
+                        auto edge_index = half_edge.idx() / 2;
+                        CPUFloat orientation = half_edge.idx() % 2 == 0 ? 1.0f : -1.0f;
+
+                        triplet_list.push_back(CPUTriplet(face_index, edge_index, orientation));
+                    }
+                }
+
+                cache_entry.d1.setFromTriplets(triplet_list.begin(), triplet_list.end());
+                cache_entry.d1_version = mesh.getTopologyVersion();
             }
-            
-            hodge2.setFromTriplets(triplet_list.begin(), triplet_list.end());
 
-            return hodge2;
+            return cache_entry.d1;
+        }
+
+        const CPUSparseMatrix& CPUSolver::buildHodgeStar0(const Geometry::Mesh& mesh) {
+
+            auto& cache_entry = m_cache[mesh.getID()];
+
+            if (cache_entry.star0_version != mesh.getGeometryVersion()) {
+
+                auto nVertices = mesh.verticesCount();
+
+                cache_entry.star0.resize(nVertices, nVertices);
+
+                std::vector<CPUTriplet> triplet_list;
+                triplet_list.reserve(nVertices);
+
+                for (auto vertex : mesh.vertices()) {
+                    triplet_list.push_back(CPUTriplet(vertex.idx(), vertex.idx(), Math::barycentricDualArea(mesh, vertex)));
+                }
+
+                cache_entry.star0.setFromTriplets(triplet_list.begin(), triplet_list.end());
+                cache_entry.star0_version = mesh.getGeometryVersion();
+            }
+
+            return cache_entry.star0;
+        }
+
+        const CPUSparseMatrix& CPUSolver::buildHodgeStar1(const Geometry::Mesh& mesh) {
+
+            auto& cache_entry = m_cache[mesh.getID()];
+
+            if (cache_entry.star1_version != mesh.getGeometryVersion()) {
+
+                auto nEdges = mesh.edgesCount();
+
+                cache_entry.star1.resize(nEdges, nEdges);
+
+                std::vector<CPUTriplet> triplet_list;
+                triplet_list.reserve(nEdges);
+
+                for (auto edge_index = 0; edge_index < nEdges; edge_index++) {
+
+                    auto halfedge1 = mesh.getHalfEdgeHandle(edge_index * 2);
+                    auto halfedge2 = mesh.getHalfEdgeHandle(edge_index * 2 + 1);
+
+                    CPUFloat cotan_weight = 0.5f * (Math::cotan(mesh, halfedge1) + Math::cotan(mesh, halfedge2));
+
+                    triplet_list.push_back(CPUTriplet(edge_index, edge_index, cotan_weight));
+                }
+
+                cache_entry.star1.setFromTriplets(triplet_list.begin(), triplet_list.end());
+                cache_entry.star1_version = mesh.getGeometryVersion();
+            }
+
+            return cache_entry.star1;
+        }
+
+        const CPUSparseMatrix& CPUSolver::buildHodgeStar2(const Geometry::Mesh& mesh) {
+
+            auto& cache_entry = m_cache[mesh.getID()];
+
+            if (cache_entry.star2_version != mesh.getGeometryVersion()) {
+
+                auto nFaces = mesh.facesCount();
+
+                cache_entry.star2.resize(nFaces, nFaces);
+
+                std::vector<CPUTriplet> triplet_list;
+                triplet_list.reserve(nFaces);
+
+                for (auto face : mesh.faces()) {
+
+                    CPUFloat area = Math::faceArea(mesh, face);
+                    CPUFloat safe_area = std::max(area, 1e-8f);
+
+                    triplet_list.push_back(CPUTriplet(face.idx(), face.idx(), 1.0f / safe_area));
+                }
+
+                cache_entry.star2.setFromTriplets(triplet_list.begin(), triplet_list.end());
+                cache_entry.star2_version = mesh.getGeometryVersion();
+            }
+
+            return cache_entry.star2;
         }
     }
 }

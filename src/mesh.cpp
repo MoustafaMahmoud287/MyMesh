@@ -3,8 +3,17 @@
 
 namespace Geometry {
 
+    Mesh::Mesh() {
+        m_id = s_next_id.fetch_add(1);
+    }
+
     Mesh::Mesh(const Mesh& other) {
         // copy geometry & topology
+        m_id = s_next_id.fetch_add(1);
+
+        m_geometry_version = 1;
+        m_topology_version = 1;
+
         m_vertex_data = other.m_vertex_data;
         m_half_edge_data = other.m_half_edge_data;
         m_face_data = other.m_face_data;
@@ -24,6 +33,8 @@ namespace Geometry {
 
     Mesh& Mesh::operator=(const Mesh& other) {
         if (this == &other) return *this;
+
+        markTopologyDirty();
 
         // copy geometry & topology
         m_vertex_data = other.m_vertex_data;
@@ -46,6 +57,41 @@ namespace Geometry {
         for (const auto& [name, prop_ptr] : other.m_per_face_property) {
             m_per_face_property[name] = prop_ptr->clone();
         }
+
+        return *this;
+    }
+
+    Mesh::Mesh(Mesh&& other) noexcept
+        : m_id(other.m_id),
+        m_topology_version(other.m_topology_version),
+        m_geometry_version(other.m_geometry_version),
+        m_vertex_data(std::move(other.m_vertex_data)),
+        m_half_edge_data(std::move(other.m_half_edge_data)),
+        m_face_data(std::move(other.m_face_data)),
+        m_single_half_edge_map(std::move(other.m_single_half_edge_map)),
+        m_per_vertex_property(std::move(other.m_per_vertex_property)),
+        m_per_half_edge_property(std::move(other.m_per_half_edge_property)),
+        m_per_face_property(std::move(other.m_per_face_property))
+    {
+        other.m_id = 0;
+    }
+
+    Mesh& Mesh::operator=(Mesh&& other) noexcept {
+        if (this == &other) return *this;
+
+        // swap identities and versions
+        std::swap(m_id, other.m_id);
+        std::swap(m_topology_version, other.m_topology_version);
+        std::swap(m_geometry_version, other.m_geometry_version);
+
+        // swap the data
+        std::swap(m_vertex_data, other.m_vertex_data);
+        std::swap(m_half_edge_data, other.m_half_edge_data);
+        std::swap(m_face_data, other.m_face_data);
+        std::swap(m_single_half_edge_map, other.m_single_half_edge_map);
+        std::swap(m_per_vertex_property, other.m_per_vertex_property);
+        std::swap(m_per_half_edge_property, other.m_per_half_edge_property);
+        std::swap(m_per_face_property, other.m_per_face_property);
 
         return *this;
     }
@@ -76,6 +122,9 @@ namespace Geometry {
     }
 
     VertexHandle Mesh::addVertex(float x, float y, float z) {
+        
+        markTopologyDirty();
+
         VertexHandle added_vertex_handle{ static_cast<HandleIndexType>(m_vertex_data.position_x.size()) };
 
         m_vertex_data.position_x.push_back(x);
@@ -96,6 +145,8 @@ namespace Geometry {
 
     FaceHandle Mesh::addTriangle(VertexHandle v1, VertexHandle v2, VertexHandle v3) {
         if (!v1.isValid() || !v2.isValid() || !v3.isValid()) return FaceHandle();
+
+        markTopologyDirty();
 
         HandleIndexType face_index = static_cast<HandleIndexType>(m_face_data.start_half_edge.size());
         m_face_data.start_half_edge.push_back(-1);
@@ -160,6 +211,9 @@ namespace Geometry {
     }
 
     void Mesh::finalizeBoundaries() {
+
+        markTopologyDirty();
+
         std::vector<HandleIndexType> outgoing_boundary(m_vertex_data.position_x.size(), -1);
 
         for (size_t i = 0; i < m_half_edge_data.face.size(); ++i) {
@@ -275,6 +329,9 @@ namespace Geometry {
         m_vertex_data.position_x[vertex.idx()] = newVertexValue.x;
         m_vertex_data.position_y[vertex.idx()] = newVertexValue.y;
         m_vertex_data.position_z[vertex.idx()] = newVertexValue.z;
+
+        markGeometryDirty();
+
         return true;
     }
 
@@ -320,6 +377,20 @@ namespace Geometry {
         return FaceToVertexCirculatorRange(this, getHalfEdge(face));
     }
 
+    uint64_t Mesh::getID() const { return m_id; }
+
+    uint64_t Mesh::getTopologyVersion() const { return m_topology_version; }
+
+    uint64_t Mesh::getGeometryVersion() const { return m_geometry_version; }
+
+    void Mesh::markTopologyDirty() {
+        m_geometry_version++;
+        m_topology_version++;
+    }
+
+    void Mesh::markGeometryDirty() {
+        m_geometry_version++;
+    }
 
     const std::vector<float>& Mesh::getVertexData(VertexGeometryAttribute attr) const {
         switch (attr) {

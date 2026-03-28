@@ -6,6 +6,8 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <atomic>
+#include <cstdint>
 
 #include "Point.h"
 #include "Handles.h"

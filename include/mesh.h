@@ -7,11 +7,11 @@ namespace Geometry {
     {
     public:
         // constructors and destructors 
-        Mesh() = default;
+        Mesh();
         Mesh(const Mesh& other);
-        Mesh(Mesh&& other) = default;
-        Mesh& operator=(Mesh&& other) = default;
         Mesh& operator=(const Mesh& other);
+        Mesh(Mesh&& other) noexcept;
+        Mesh& operator=(Mesh&& other) noexcept;
 
         // mesh construction
         void reserve(size_t numVertices, size_t numFaces);
@@ -54,6 +54,11 @@ namespace Geometry {
         FaceToHalfEdgeCirculatorRange surroundingHalfEdges(FaceHandle face) const;
         FaceToVertexCirculatorRange surroundingVertices(FaceHandle face) const;
 
+        // mesh id && versioning access
+        uint64_t getID() const;
+        uint64_t getTopologyVersion() const;
+        uint64_t getGeometryVersion() const;
+
         // property access 
         template <typename T>
         PropertyCreationState addMeshProperty(MeshComponent property_mesh_component, const std::string& property_name);
@@ -76,7 +81,18 @@ namespace Geometry {
         template <typename T>
         std::optional<std::reference_wrapper<Property<T>>> getMeshProperty(MeshProperty& property_container, const std::string& property_name);
 
+
+        // for versioning
+        void markTopologyDirty();
+        void markGeometryDirty();
+
         // internal data 
+        inline static std::atomic<uint64_t> s_next_id{ 1 };
+        uint64_t m_id;
+
+        uint64_t m_topology_version = 1;
+        uint64_t m_geometry_version = 1;
+
         VertexData m_vertex_data;
         HalfEdgeData m_half_edge_data;
         FaceData m_face_data;

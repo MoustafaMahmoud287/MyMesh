@@ -34,7 +34,7 @@ namespace MyMesh {
 
         float cotan(const Geometry::Mesh& mesh, Geometry::HalfEdgeHandle halfedge) {
 
-            float sigma = 1e-7;
+            float sigma = 1e-7f;
             float result = 0.0f;
 
             if (mesh.isInteriorHalfEdge(halfedge)) {

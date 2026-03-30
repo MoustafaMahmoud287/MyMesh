@@ -4,8 +4,8 @@
 #include <vector>
 #include <unordered_map>
 
-#include "Mesh.h" 
-#include "GeometryMath.h"
+#include <MyMesh/Core/mesh.h> 
+#include <MyMesh/Math/GeometryMath.h>
 
 namespace MyMesh {
     namespace MathInternal {

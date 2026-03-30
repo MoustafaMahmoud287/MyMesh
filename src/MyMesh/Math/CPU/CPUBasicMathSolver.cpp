@@ -1,4 +1,4 @@
-#include "CPUBasicMathSolver.h"
+#include <MyMesh/Math/CPU/CPUBasicMathSolver.h>
 
 namespace MyMesh {
     namespace MathInternal {

@@ -3,7 +3,8 @@
 #include <iterator>  
 #include <cassert>   
 #include <cstddef>   
-#include "Handles.h"
+
+#include <MyMesh/Core/Base/Handles.h>
 
 namespace Geometry {
     class Mesh;

@@ -1,4 +1,4 @@
-#include "mesh.h"
+#include <MyMesh/Core/mesh.h>
 
 namespace Geometry {
     // Constructor

@@ -1,7 +1,11 @@
 #pragma once
+
+// external
 #include <iterator>
 #include <cassert>
-#include "Handles.h"
+
+// internal
+#include <MyMesh/Core/Base/Handles.h>
 
 namespace Geometry {
 

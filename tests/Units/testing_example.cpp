@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <Eigen/Sparse>
 
-#include "mesh.h"
+#include <MyMesh/Core/mesh.h>
 
 // Bring the library into scope
 using namespace Geometry;

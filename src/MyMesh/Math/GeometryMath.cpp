@@ -1,4 +1,4 @@
-#include "GeometryMath.h"
+#include <MyMesh/Math/GeometryMath.h>
 
 namespace MyMesh {
     namespace Math {

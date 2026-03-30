@@ -9,17 +9,17 @@
 #include <atomic>
 #include <cstdint>
 
-#include "Point.h"
-#include "Handles.h"
-#include "Property.h"
-#include "Utils.h" 
-#include "GlobalIterator.h"
-#include "VertexCirculator.h"
-#include "VertexToFaceCirculator.h"
-#include "FaceCirculator.h"
-#include "FaceToHalfEdgeCirculator.h"
-#include "FaceToVertexCirculator.h"
-#include "HalfEdgeCirculator.h"
+#include <MyMesh/Core/Base/Point.h>
+#include <MyMesh/Core/Base/Handles.h>
+#include <MyMesh/Core/Properties/Property.h>
+#include <MyMesh/Core/Base/Utils.h> 
+#include <MyMesh/Core/Iterators/GlobalIterator.h>
+#include <MyMesh/Core/Circulators/VertexCirculator.h>
+#include <MyMesh/Core/Circulators/VertexToFaceCirculator.h>
+#include <MyMesh/Core/Circulators/FaceCirculator.h>
+#include <MyMesh/Core/Circulators/FaceToHalfEdgeCirculator.h>
+#include <MyMesh/Core/Circulators/FaceToVertexCirculator.h>
+#include <MyMesh/Core/Circulators/HalfEdgeCirculator.h>
 
 namespace MyMesh {
     namespace MathInternal {

@@ -1,5 +1,4 @@
-#include "Mesh.h"
-#include <cassert> 
+#include <MyMesh/Core/mesh.h>
 
 namespace Geometry {
 

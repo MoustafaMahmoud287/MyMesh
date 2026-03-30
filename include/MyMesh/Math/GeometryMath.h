@@ -1,5 +1,5 @@
 #pragma once
-#include "Mesh.h"
+#include <MyMesh/Core/mesh.h>
 
 namespace MyMesh {
     namespace Math {

@@ -12,6 +12,7 @@ namespace Geometry {
         Mesh& operator=(const Mesh& other);
         Mesh(Mesh&& other) noexcept;
         Mesh& operator=(Mesh&& other) noexcept;
+        ~Mesh();
 
         // mesh construction
         void reserve(size_t numVertices, size_t numFaces);
@@ -85,6 +86,13 @@ namespace Geometry {
         // for versioning
         void markTopologyDirty();
         void markGeometryDirty();
+
+        //for observer
+        friend class ::MyMesh::MathInternal::CPUSolver;
+        SolverCallBack onMeshDestroyed = nullptr;
+        void rigesterToCPU(SolverCallBack call_back);
+        void unRigesterfromCpu();
+        bool isCPURigestered() const;
 
         // internal data 
         inline static std::atomic<uint64_t> s_next_id{ 1 };

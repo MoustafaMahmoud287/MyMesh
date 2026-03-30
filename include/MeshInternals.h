@@ -21,6 +21,12 @@
 #include "FaceToVertexCirculator.h"
 #include "HalfEdgeCirculator.h"
 
+namespace MyMesh {
+    namespace MathInternal {
+        class CPUSolver;
+    }
+}
+
 namespace Geometry {
 
     // 1. core data structures
@@ -73,5 +79,6 @@ namespace Geometry {
         AlreadyExists,
         TypeMismatch
     };
-
+    
+    using SolverCallBack = std::function<void(uint64_t)>;
 } 

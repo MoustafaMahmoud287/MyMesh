@@ -96,6 +96,10 @@ namespace Geometry {
         return *this;
     }
 
+    Mesh::~Mesh() {
+        unRigesterfromCpu();
+    }
+
     void Mesh::reserve(size_t numVertices, size_t numFaces) {
         size_t estimated_half_edges = 3 * numFaces;
         estimated_half_edges += estimated_half_edges / 10;
@@ -429,4 +433,18 @@ namespace Geometry {
         return empty_int_vec;
     }
 
+    void Mesh::rigesterToCPU(SolverCallBack call_back) {
+        onMeshDestroyed = std::move(call_back);
+    }
+
+    void Mesh::unRigesterfromCpu() {
+        if (onMeshDestroyed != nullptr && m_id != 0) {
+            onMeshDestroyed(m_id);
+            onMeshDestroyed = nullptr;
+        }
+    }
+
+    bool Mesh::isCPURigestered() const{
+        return onMeshDestroyed != nullptr;
+    }
 } 

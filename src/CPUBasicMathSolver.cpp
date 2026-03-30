@@ -5,6 +5,8 @@ namespace MyMesh {
 
         const CPUSparseMatrix& CPUSolver::buildD0(const Geometry::Mesh& mesh) {
             
+            if (!mesh.isCPURigestered()) registerMesh(mesh);
+
             auto& cache_entry = m_cache[mesh.getID()];
 
             if (cache_entry.d0_version != mesh.getTopologyVersion()) {
@@ -35,6 +37,8 @@ namespace MyMesh {
 
 
         const CPUSparseMatrix& CPUSolver::buildD1(const Geometry::Mesh& mesh) {
+
+            if (!mesh.isCPURigestered()) registerMesh(mesh);
             
             auto& cache_entry = m_cache[mesh.getID()];
 
@@ -70,6 +74,8 @@ namespace MyMesh {
 
         const CPUSparseMatrix& CPUSolver::buildHodgeStar0(const Geometry::Mesh& mesh) {
 
+            if (!mesh.isCPURigestered()) registerMesh(mesh);
+
             auto& cache_entry = m_cache[mesh.getID()];
 
             if (cache_entry.star0_version != mesh.getGeometryVersion()) {
@@ -93,6 +99,8 @@ namespace MyMesh {
         }
 
         const CPUSparseMatrix& CPUSolver::buildHodgeStar1(const Geometry::Mesh& mesh) {
+
+            if (!mesh.isCPURigestered()) registerMesh(mesh);
 
             auto& cache_entry = m_cache[mesh.getID()];
 
@@ -124,6 +132,8 @@ namespace MyMesh {
 
         const CPUSparseMatrix& CPUSolver::buildHodgeStar2(const Geometry::Mesh& mesh) {
 
+            if (!mesh.isCPURigestered()) registerMesh(mesh);
+
             auto& cache_entry = m_cache[mesh.getID()];
 
             if (cache_entry.star2_version != mesh.getGeometryVersion()) {
@@ -148,6 +158,14 @@ namespace MyMesh {
             }
 
             return cache_entry.star2;
+        }
+
+        void CPUSolver::registerMesh(const Geometry::Mesh& mesh) {
+            const_cast<Geometry::Mesh&>(mesh).rigesterToCPU([this](uint64_t id) { this->m_cache.erase(id); });
+        }
+
+        void CPUSolver::unregisterMesh(const Geometry::Mesh& mesh) {
+            const_cast<Geometry::Mesh&>(mesh).unRigesterfromCpu();
         }
     }
 }

@@ -25,6 +25,8 @@ namespace MyMesh {
         private:
 
             CPUCache m_cache;
+            void registerMesh(const Geometry::Mesh& mesh);
+            void unregisterMesh(const Geometry::Mesh& mesh);
 
         };
     }

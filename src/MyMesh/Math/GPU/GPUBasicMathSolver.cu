@@ -59,12 +59,12 @@ namespace MyMesh {
             size_t block_size = m_memory_arena->getBlockSize();
             size_t bufferSize1 = 0;
 
-            cusparseSpGEMM_workEstimation(
+            cusparseStatus_t stat = cusparseSpGEMM_workEstimation(
                 m_cusparse_handle, opA_type, opB_type, &alpha, matA, matB, &beta, matC,
                 CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT, spgemmDesc, &bufferSize1, nullptr
             );
 
-            if (bufferSize1 > block_size) {
+            if (stat != CUSPARSE_STATUS_SUCCESS || bufferSize1 > block_size) {
                 cusparseSpGEMM_destroyDescr(spgemmDesc);
                 cusparseDestroySpMat(matC);
                 return MathStatus::OUT_OF_MEMORY_VRAM;
@@ -73,34 +73,49 @@ namespace MyMesh {
             auto workspace_1 = m_memory_arena->getTemporaryBlock();
             void* d_workspace1 = m_memory_arena->getRawBlockPointer(workspace_1);
 
-            cusparseSpGEMM_workEstimation(
+            stat = cusparseSpGEMM_workEstimation(
                 m_cusparse_handle, opA_type, opB_type, &alpha, matA, matB, &beta, matC,
                 CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT, spgemmDesc, &bufferSize1, d_workspace1
             );
 
+            cudaDeviceSynchronize();
+            if (stat != CUSPARSE_STATUS_SUCCESS || cudaGetLastError() != cudaSuccess) {
+                cusparseSpGEMM_destroyDescr(spgemmDesc);
+                cusparseDestroySpMat(matC);
+                m_memory_arena->evictTemporaryBlock(workspace_1);
+                return MathStatus::HARDWARE_ERROR;
+            }
+
             size_t bufferSize2 = 0;
 
-            cusparseSpGEMM_compute(
+            stat = cusparseSpGEMM_compute(
                 m_cusparse_handle, opA_type, opB_type, &alpha, matA, matB, &beta, matC,
                 CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT, spgemmDesc, &bufferSize2, nullptr
             );
 
-            if (bufferSize2 > block_size) {
+            if (stat != CUSPARSE_STATUS_SUCCESS || bufferSize2 > block_size) {
                 cusparseSpGEMM_destroyDescr(spgemmDesc);
                 cusparseDestroySpMat(matC);
-
                 m_memory_arena->evictTemporaryBlock(workspace_1);
-
                 return MathStatus::OUT_OF_MEMORY_VRAM;
             }
 
             auto workspace_2 = m_memory_arena->getTemporaryBlock();
             void* d_workspace2 = m_memory_arena->getRawBlockPointer(workspace_2);
 
-            cusparseSpGEMM_compute(
+            stat = cusparseSpGEMM_compute(
                 m_cusparse_handle, opA_type, opB_type, &alpha, matA, matB, &beta, matC,
                 CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT, spgemmDesc, &bufferSize2, d_workspace2
             );
+
+            cudaDeviceSynchronize();
+            if (stat != CUSPARSE_STATUS_SUCCESS || cudaGetLastError() != cudaSuccess) {
+                cusparseSpGEMM_destroyDescr(spgemmDesc);
+                cusparseDestroySpMat(matC);
+                m_memory_arena->evictTemporaryBlock(workspace_1);
+                m_memory_arena->evictTemporaryBlock(workspace_2);
+                return MathStatus::HARDWARE_ERROR;
+            }
 
             int64_t C_rows, C_cols, C_nnz;
             cusparseSpMatGetSize(matC, &C_rows, &C_cols, &C_nnz);
@@ -110,17 +125,14 @@ namespace MyMesh {
             if (C_bytes > block_size) {
                 cusparseSpGEMM_destroyDescr(spgemmDesc);
                 cusparseDestroySpMat(matC);
-
                 m_memory_arena->evictTemporaryBlock(workspace_1);
                 m_memory_arena->evictTemporaryBlock(workspace_2);
-
                 return MathStatus::OUT_OF_MEMORY_VRAM;
             }
 
             if (opC.is_intermediate == true) {
                 opC.block_index = m_memory_arena->getTemporaryBlock();
             }
-
             else {
                 opC.block_index = m_memory_arena->allocatePersistentBlock(mesh_id, type);
             }
@@ -150,11 +162,11 @@ namespace MyMesh {
             opC.cols = static_cast<int>(C_cols);
             opC.nnz = static_cast<int>(C_nnz);
 
-
             m_memory_arena->evictTemporaryBlock(workspace_1);
             m_memory_arena->evictTemporaryBlock(workspace_2);
 
             return MathStatus::SUCCESS;
+
         }
     } 
 } 

@@ -46,7 +46,7 @@ namespace MyMesh {
             }
 
             cusparseSpMatDescr_t matC;
-            cusparseCreateCsr(&matC, 0, 0, 0,
+            cusparseCreateCsr(&matC, opA.rows, opB.cols, 0,
                 nullptr, nullptr, nullptr,
                 CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
                 CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F);

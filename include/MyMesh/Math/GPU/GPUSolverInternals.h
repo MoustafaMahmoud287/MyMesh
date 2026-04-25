@@ -18,7 +18,7 @@ namespace MyMesh {
     namespace MathInternal {
         
         enum class OperatorType {
-            D0, D1, STAR0, STAR1, STAR2, OTHER
+            D0, D1, STAR0, STAR1, STAR2, OTHER, MASS_MATRIX, LAPLACIAN
         };
 
         constexpr OperatorType AllTypes[] = {
@@ -27,7 +27,9 @@ namespace MyMesh {
             OperatorType::STAR0,
             OperatorType::STAR1,
             OperatorType::STAR2,
-            OperatorType::OTHER
+            OperatorType::OTHER,
+            OperatorType::MASS_MATRIX,
+            OperatorType::LAPLACIAN
         };
 
         enum class MathStatus {

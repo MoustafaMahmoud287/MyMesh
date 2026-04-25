@@ -1,7 +1,10 @@
 #pragma once
 
 #include <cuda_runtime.h>
+#pragma warning(push)
+#pragma warning(disable : 4996) 
 #include <cusparse.h>
+#pragma warning(pop)            
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
 #include <unordered_map>

@@ -23,7 +23,7 @@
 
 namespace MyMesh {
     namespace MathInternal {
-        class CPUSolver;
+        class CPUTopologyCache;
     }
 }
 

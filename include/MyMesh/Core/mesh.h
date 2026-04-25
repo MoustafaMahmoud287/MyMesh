@@ -88,7 +88,7 @@ namespace Geometry {
         void markGeometryDirty();
 
         //for observer
-        friend class ::MyMesh::MathInternal::CPUSolver;
+        friend class ::MyMesh::MathInternal::CPUTopologyCache;
         SolverCallBack onMeshDestroyed = nullptr;
         void rigesterToCPU(SolverCallBack call_back);
         void unRigesterfromCpu();

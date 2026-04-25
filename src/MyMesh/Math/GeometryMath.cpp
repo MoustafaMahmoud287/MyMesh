@@ -5,6 +5,8 @@ namespace MyMesh {
 
         float faceArea(const Geometry::Mesh& mesh, Geometry::FaceHandle face) {
             
+            if (!face.isValid()) return 0.0f;
+
             auto it = mesh.surroundingVertices(face).begin();
 
             Point vertex1position = mesh.getVertexCopy(*it); ++it;
@@ -24,7 +26,9 @@ namespace MyMesh {
             float dual_area = 0.0f;
 
             for (auto face : mesh.surroundingFaces(vertex)) {
-                dual_area += faceArea(mesh, face);
+                if (face.isValid()) {
+                    dual_area += faceArea(mesh, face);
+                }
             }
 
             dual_area *= (1.0f / 3.0f);

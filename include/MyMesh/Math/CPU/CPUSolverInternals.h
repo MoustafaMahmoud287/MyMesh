@@ -13,6 +13,7 @@ namespace MyMesh {
         using CPUFloat = float;
         using CPUSparseMatrix = Eigen::SparseMatrix<CPUFloat, Eigen::RowMajor>;
         using CPUTriplet = Eigen::Triplet<CPUFloat>;
+        using CPUMappedSparseMatrix = Eigen::Map<Eigen::SparseMatrix<CPUFloat, Eigen::RowMajor, int>>;
 
         struct CPUSparseMatrixCache {
 

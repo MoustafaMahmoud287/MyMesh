@@ -290,5 +290,39 @@ namespace MyMesh {
                 CUDA_R_32F);
         }
 
+        CPUSparseMatrix CudaMemoryArena::downloadMatrix(const CudaOperatorDescriptor& desc) const {
+
+            if (desc.block_index < 0 || m_memory_pool[desc.block_index].d_raw_memory == nullptr) {
+                throw std::runtime_error("[CudaMemoryArena] Attempted to download an invalid GPU matrix.");
+            }
+
+            size_t row_bytes = (desc.rows + 1) * sizeof(int);
+            size_t col_bytes = desc.nnz * sizeof(int);
+            size_t val_bytes = desc.nnz * sizeof(float);
+
+            char* d_base_ptr = static_cast<char*>(m_memory_pool[desc.block_index].d_raw_memory);
+            int* d_row_offsets = reinterpret_cast<int*>(d_base_ptr);
+            int* d_col_indices = reinterpret_cast<int*>(d_base_ptr + row_bytes);
+            float* d_values = reinterpret_cast<float*>(d_base_ptr + row_bytes + col_bytes);
+
+            std::vector<int> h_rows(desc.rows + 1);
+            std::vector<int> h_cols(desc.nnz);
+            std::vector<float> h_vals(desc.nnz);
+
+            cudaMemcpy(h_rows.data(), d_row_offsets, row_bytes, cudaMemcpyDeviceToHost);
+            cudaMemcpy(h_cols.data(), d_col_indices, col_bytes, cudaMemcpyDeviceToHost);
+            cudaMemcpy(h_vals.data(), d_values, val_bytes, cudaMemcpyDeviceToHost);
+
+            CPUMappedSparseMatrix mapped_mat(
+                desc.rows, desc.cols, desc.nnz, h_rows.data(), h_cols.data(), h_vals.data()
+            );
+
+            CPUSparseMatrix final_matrix = mapped_mat;
+            final_matrix.makeCompressed();
+
+            return final_matrix;
+
+        }
+
     }
 }

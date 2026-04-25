@@ -24,6 +24,8 @@ namespace MyMesh {
             const CudaOperatorDescriptor* getDescriptor(uint64_t mesh_id, OperatorType type) const;
             size_t getBlockSize() const;
 
+            CPUSparseMatrix downloadMatrix(const CudaOperatorDescriptor& desc) const;
+
         private:
 
             CudaMemoryPool  m_memory_pool;

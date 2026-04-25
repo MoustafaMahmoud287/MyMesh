@@ -65,6 +65,8 @@ namespace MyMesh {
 
         bool CudaMemoryArena::uploadAndCache(uint64_t mesh_id, uint64_t version, OperatorType type, const CPUSparseMatrix& cpu_matrix)
         {
+            const_cast<CPUSparseMatrix&>(cpu_matrix).makeCompressed();
+
             size_t needed_bytes = (cpu_matrix.nonZeros() * sizeof(float)) + (cpu_matrix.nonZeros() * sizeof(int)) + ((cpu_matrix.rows() + 1) * sizeof(int));
 
             if (needed_bytes > m_block_size_bytes) {

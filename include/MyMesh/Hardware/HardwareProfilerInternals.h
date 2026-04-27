@@ -21,6 +21,7 @@ namespace MyMesh {
         struct LimitsProfile {
             size_t MinSizeToRunGPU;
             size_t MaxSizeToRunGPU;
+            size_t TestBlockSize;
         };
 #pragma pack(pop)
 
@@ -31,5 +32,20 @@ namespace MyMesh {
         };
 #pragma pack(pop)
 
+        struct LimitsPrams {
+            size_t testing_block_default_size = 128 * 1024 * 1024;
+            size_t min_dim = 1;
+            size_t max_dim = 15000;
+            size_t pc_safty_vram = 1024ULL * 1024 * 1024;
+            size_t min_size = 1024 * 1024;
+            int num_of_dummy_persistent_blocks = 3;
+            int num_of_dummy_temp_blocks = 3;
+            int num_of_total_dummy_blocks = num_of_dummy_persistent_blocks + num_of_dummy_temp_blocks;
+            int number_of_rounds = 7;
+            float sparsity = 0.005f;
+        };
+
     }
 }
+
+

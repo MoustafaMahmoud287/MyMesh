@@ -20,7 +20,7 @@ namespace MyMesh {
 #pragma pack(push, 1)
         struct LimitsProfile {
             size_t MinSizeToRunGPU;
-            size_t MaxSizeToRunGPU;
+            size_t MaxAlocatedGPUMemory;
             size_t TestBlockSize;
         };
 #pragma pack(pop)

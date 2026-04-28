@@ -76,11 +76,10 @@ namespace MyMesh {
             LimitsPrams prams;
 
             cudaGetDeviceProperties(&props, device_id);
-            auto avalibale_memory = (props.totalGlobalMem > prams.pc_safty_vram) ? props.totalGlobalMem - prams.pc_safty_vram : props.totalGlobalMem / 2;
+            limits.MaxAlocatedGPUMemory = (props.totalGlobalMem > prams.pc_safty_vram) ? props.totalGlobalMem - prams.pc_safty_vram : props.totalGlobalMem / 2;
             limits.MinSizeToRunGPU = prams.min_size;
             limits.TestBlockSize = std::min(prams.testing_block_default_size,
-                avalibale_memory / prams.num_of_total_dummy_blocks);
-            limits.MaxSizeToRunGPU = limits.TestBlockSize;
+                limits.MaxAlocatedGPUMemory / prams.num_of_total_dummy_blocks);
 
             try {
 

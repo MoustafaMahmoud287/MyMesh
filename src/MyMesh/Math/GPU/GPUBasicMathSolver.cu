@@ -71,6 +71,8 @@ namespace MyMesh {
             }
 
             auto workspace_1 = m_memory_arena->getTemporaryBlock();
+            if(workspace_1 == -1) return MathStatus::OUT_OF_MEMORY_VRAM;
+
             void* d_workspace1 = m_memory_arena->getRawBlockPointer(workspace_1);
 
             stat = cusparseSpGEMM_workEstimation(
@@ -101,6 +103,11 @@ namespace MyMesh {
             }
 
             auto workspace_2 = m_memory_arena->getTemporaryBlock();
+            if (workspace_2 == -1) {
+                m_memory_arena->evictTemporaryBlock(workspace_1);
+                return MathStatus::OUT_OF_MEMORY_VRAM;
+            }
+
             void* d_workspace2 = m_memory_arena->getRawBlockPointer(workspace_2);
 
             stat = cusparseSpGEMM_compute(
@@ -132,7 +139,15 @@ namespace MyMesh {
 
             if (opC.is_intermediate == true) {
                 opC.block_index = m_memory_arena->getTemporaryBlock();
+                if (opC.block_index == -1) {+
+                    cusparseSpGEMM_destroyDescr(spgemmDesc);
+                    cusparseDestroySpMat(matC);
+                    m_memory_arena->evictTemporaryBlock(workspace_1);
+                    m_memory_arena->evictTemporaryBlock(workspace_2);
+                    return MathStatus::OUT_OF_MEMORY_VRAM;
+                }
             }
+
             else {
                 opC.block_index = m_memory_arena->allocatePersistentBlock(mesh_id, type);
             }

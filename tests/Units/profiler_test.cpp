@@ -45,7 +45,7 @@ int main() {
 
     // Format the Max Limit (Arena Safety Ceiling)
     std::cout << "Safe Arena Ceiling (Max) : "
-        << (spec.m_gpu_limits.MaxSizeToRunGPU / (1024 * 1024)) << " MB\n";
+        << (spec.m_gpu_limits.MaxAlocatedGPUMemory / (1024 * 1024)) << " MB\n";
 
     std::cout << "\n=================================================\n";
     std::cout << "              PROFILER TEST COMPLETE             \n";

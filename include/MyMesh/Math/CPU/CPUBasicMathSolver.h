@@ -9,7 +9,7 @@ namespace MyMesh {
             CPUSolver() = default;
             ~CPUSolver() = default;
 
-            CPUSparseMatrix multiply(const CPUSparseMatrix& A, const CPUSparseMatrix& B);
+            std::optional<CPUSparseMatrix> multiply(const CPUSparseMatrix& A, const CPUSparseMatrix& B);
 
         };
     }

@@ -3,6 +3,7 @@
 #include <Eigen/Sparse>
 #include <vector>
 #include <unordered_map>
+#include <optional>
 
 #include <MyMesh/Core/mesh.h> 
 #include <MyMesh/Math/GeometryMath.h>

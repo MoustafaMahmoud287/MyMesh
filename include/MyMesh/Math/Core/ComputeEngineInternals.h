@@ -34,23 +34,24 @@ namespace MyMesh {
         };
 
         struct ComputeTarget {
+            BlockCounterType block_index;
             uint64_t mesh_id;
             OperatorType type;
             uint32_t version;
             bool is_intermediate;
 
             ComputeTarget()
-                : mesh_id(TRANSIENT_ID), type(OperatorType::OTHER), version(0), is_intermediate(false){
+                : block_index(-1), mesh_id(TRANSIENT_ID), type(OperatorType::OTHER), version(0), is_intermediate(false){
             }
 
             ComputeTarget(uint64_t id, OperatorType t, uint32_t v, bool intr)
-                : mesh_id(id), type(t), version(v), is_intermediate(intr){
+                : block_index(-1), mesh_id(id), type(t), version(v), is_intermediate(intr){
             }
         };
 
         const BlockCounterType MIN_BLOCKS_NUM = 3;
         const int DEFAULT_ID = 0;
         const int BLOCKS_DIVIDE_THSHOLD = 10;
-        constexpr uint64_t TRANSIENT_ID = std::numeric_limits<uint64_t>::max();
+
     }
 }

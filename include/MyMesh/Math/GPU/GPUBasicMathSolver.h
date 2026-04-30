@@ -11,7 +11,10 @@
                 CudaSolver(CudaMemoryArena* memory_arena = nullptr);
                 ~CudaSolver();
 
-                MathStatus multiply(const CudaOperatorDescriptor& opA, const CudaOperatorDescriptor& opB, CudaOperatorDescriptor& opC, uint64_t mesh_id = 0, OperatorType type = OperatorType::OTHER);
+                CudaMultiplyResult multiply(const CudaOperatorDescriptor& opA, const CudaOperatorDescriptor& opB,
+                    CudaSaveOptions save = CudaSaveOptions::PERSISTENT_BLOCK,
+                    uint64_t mesh_id = TRANSIENT_ID,  uint64_t version = TRANSIENT_ID,
+                    OperatorType type = OperatorType::OTHER);
 
             private:
 

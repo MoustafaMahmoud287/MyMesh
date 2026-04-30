@@ -229,6 +229,10 @@ namespace MyMesh {
             return block_index;
         }
 
+        BlockCounterType CudaMemoryArena::emptyTemporaryBlockCount() {
+            return m_free_temp_blocks.size();
+        }
+
         bool CudaMemoryArena::evictTemporaryBlock(BlockCounterType block_index) {
             
             auto& block = m_memory_pool[block_index];
@@ -366,6 +370,22 @@ namespace MyMesh {
                 CUSPARSE_INDEX_32I,
                 CUSPARSE_INDEX_BASE_ZERO,
                 CUDA_R_32F);
+        }
+
+        void CudaMemoryArena::commitMatrixToBlock(BlockCounterType block_index, cusparseSpMatDescr_t new_mat, int rows, int cols, int nnz) {
+            
+            auto& block = m_memory_pool[block_index];
+
+            /
+            if (block.current_descriptor.descriptor != nullptr && block.current_descriptor.descriptor != new_mat) {
+                cusparseDestroySpMat(block.current_descriptor.descriptor);
+            }
+
+            block.current_descriptor.descriptor = new_mat;
+            block.current_descriptor.rows = rows;
+            block.current_descriptor.cols = cols;
+            block.current_descriptor.nnz = nnz;
+
         }
 
         CPUSparseMatrix CudaMemoryArena::downloadMatrix(BlockCounterType block_index) const {

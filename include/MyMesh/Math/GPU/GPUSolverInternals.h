@@ -19,7 +19,7 @@
 
 namespace MyMesh {
     namespace MathInternal {
-        
+
         enum class OperatorType {
             D0, D1, STAR0, STAR1, STAR2, OTHER, MASS_MATRIX, LAPLACIAN
         };
@@ -40,6 +40,11 @@ namespace MyMesh {
             OUT_OF_MEMORY_VRAM, 
             INVALID_DIMENSIONS, 
             HARDWARE_ERROR
+        };
+
+        enum class CudaSaveOptions {
+            PERSISTENT_BLOCK,
+            SCRATCHPAD_BLOCK
         };
 
         struct CacheKey {
@@ -74,10 +79,17 @@ namespace MyMesh {
             int nnz = 0;
         };
 
+        struct CudaMultiplyResult {
+            MathStatus status;
+            BlockCounterType resultBlock = -1;
+        };
+
         using CudaMemoryPool = std::vector<CudaMemoryBlock>;
         using CudaMatrixCache = std::unordered_map<CacheKey, int, CacheKeyHash>;
         using CacheManeger = std::list<CacheKey>;
         using BlocksStack = std::vector<int>;
         using BlockCounterType = int;
+
+        constexpr uint64_t TRANSIENT_ID = std::numeric_limits<uint64_t>::max();
     }
 }

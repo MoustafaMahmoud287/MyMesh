@@ -23,26 +23,26 @@ namespace MyMesh {
         }
 
 
-        MathStatus CudaSolver::multiply(const CudaOperatorDescriptor& opA, const CudaOperatorDescriptor& opB, CudaOperatorDescriptor& opC, uint64_t mesh_id, OperatorType type)
+        CudaMultiplyResult CudaSolver::multiply(const CudaOperatorDescriptor& opA, const CudaOperatorDescriptor& opB, CudaSaveOptions save, uint64_t mesh_id, uint64_t version, OperatorType type)
         {
             cusparseSpMatDescr_t matA = opA.descriptor;
             cusparseSpMatDescr_t matB = opB.descriptor;
 
             if (!matA || !matB) {
                 std::cerr << "[CudaSolver] Error: Invalid input descriptors for multiplication.\n";
-                return MathStatus::HARDWARE_ERROR;
+                return CudaMultiplyResult{ MathStatus::HARDWARE_ERROR };
             }
 
             if (opA.cols != opB.rows) {
                 std::cerr << "[CudaSolver] Error: INVALID_DIMENSIONS. "
                     << "Cannot multiply A (" << opA.rows << "x" << opA.cols
                     << ") with B (" << opB.rows << "x" << opB.cols << ").\n";
-                return MathStatus::INVALID_DIMENSIONS;
+                return CudaMultiplyResult{ MathStatus::INVALID_DIMENSIONS };
             }
 
             cusparseSpGEMMDescr_t spgemmDesc;
             if (cusparseSpGEMM_createDescr(&spgemmDesc) != CUSPARSE_STATUS_SUCCESS) {
-                return MathStatus::HARDWARE_ERROR;
+                return CudaMultiplyResult{ MathStatus::HARDWARE_ERROR };
             }
 
             cusparseSpMatDescr_t matC;
@@ -67,13 +67,19 @@ namespace MyMesh {
             if (stat != CUSPARSE_STATUS_SUCCESS || bufferSize1 > block_size) {
                 cusparseSpGEMM_destroyDescr(spgemmDesc);
                 cusparseDestroySpMat(matC);
-                return MathStatus::OUT_OF_MEMORY_VRAM;
+                return CudaMultiplyResult{ MathStatus::OUT_OF_MEMORY_VRAM };
             }
 
             auto workspace_1 = m_memory_arena->getTemporaryBlock();
-            if(workspace_1 == -1) return MathStatus::OUT_OF_MEMORY_VRAM;
+
+            if(workspace_1 == -1) return CudaMultiplyResult{ MathStatus::OUT_OF_MEMORY_VRAM };
 
             void* d_workspace1 = m_memory_arena->getRawBlockPointer(workspace_1);
+
+            if (d_workspace1 == nullptr) {
+                m_memory_arena->evictTemporaryBlock(workspace_1);
+                return CudaMultiplyResult{ MathStatus::OUT_OF_MEMORY_VRAM };
+            }
 
             stat = cusparseSpGEMM_workEstimation(
                 m_cusparse_handle, opA_type, opB_type, &alpha, matA, matB, &beta, matC,
@@ -85,7 +91,7 @@ namespace MyMesh {
                 cusparseSpGEMM_destroyDescr(spgemmDesc);
                 cusparseDestroySpMat(matC);
                 m_memory_arena->evictTemporaryBlock(workspace_1);
-                return MathStatus::HARDWARE_ERROR;
+                return CudaMultiplyResult{ MathStatus::HARDWARE_ERROR };
             }
 
             size_t bufferSize2 = 0;
@@ -99,16 +105,22 @@ namespace MyMesh {
                 cusparseSpGEMM_destroyDescr(spgemmDesc);
                 cusparseDestroySpMat(matC);
                 m_memory_arena->evictTemporaryBlock(workspace_1);
-                return MathStatus::OUT_OF_MEMORY_VRAM;
+                return CudaMultiplyResult{ MathStatus::OUT_OF_MEMORY_VRAM };
             }
 
             auto workspace_2 = m_memory_arena->getTemporaryBlock();
             if (workspace_2 == -1) {
                 m_memory_arena->evictTemporaryBlock(workspace_1);
-                return MathStatus::OUT_OF_MEMORY_VRAM;
+                return CudaMultiplyResult{ MathStatus::OUT_OF_MEMORY_VRAM };
             }
 
             void* d_workspace2 = m_memory_arena->getRawBlockPointer(workspace_2);
+
+            if (d_workspace2 == nullptr) {
+                m_memory_arena->evictTemporaryBlock(workspace_1);
+                m_memory_arena->evictTemporaryBlock(workspace_2);
+                return CudaMultiplyResult{ MathStatus::OUT_OF_MEMORY_VRAM };
+            }
 
             stat = cusparseSpGEMM_compute(
                 m_cusparse_handle, opA_type, opB_type, &alpha, matA, matB, &beta, matC,
@@ -121,7 +133,7 @@ namespace MyMesh {
                 cusparseDestroySpMat(matC);
                 m_memory_arena->evictTemporaryBlock(workspace_1);
                 m_memory_arena->evictTemporaryBlock(workspace_2);
-                return MathStatus::HARDWARE_ERROR;
+                return CudaMultiplyResult{ MathStatus::HARDWARE_ERROR };
             }
 
             int64_t C_rows, C_cols, C_nnz;
@@ -134,28 +146,27 @@ namespace MyMesh {
                 cusparseDestroySpMat(matC);
                 m_memory_arena->evictTemporaryBlock(workspace_1);
                 m_memory_arena->evictTemporaryBlock(workspace_2);
-                return MathStatus::OUT_OF_MEMORY_VRAM;
+                return CudaMultiplyResult{ MathStatus::OUT_OF_MEMORY_VRAM };
             }
 
-            if (opC.block_index == -1) {
-                if (opC.is_intermediate == true) {
-                    opC.block_index = m_memory_arena->getTemporaryBlock();
-                    if (opC.block_index == -1) {
-                        cusparseSpGEMM_destroyDescr(spgemmDesc);
-                        cusparseDestroySpMat(matC);
-                        m_memory_arena->evictTemporaryBlock(workspace_1);
-                        m_memory_arena->evictTemporaryBlock(workspace_2);
-                        return MathStatus::OUT_OF_MEMORY_VRAM;
-                    }
-                }
+            BlockCounterType target_block_index = -1;
 
-                else {
-                    opC.block_index = m_memory_arena->allocatePersistentBlock(mesh_id, type);
-                }
+            if (save == CudaSaveOptions::SCRATCHPAD_BLOCK) {
+                target_block_index = m_memory_arena->getTemporaryBlock();
+            }
+            else {
+                target_block_index = m_memory_arena->allocatePersistentBlock(mesh_id, version, type);
             }
 
-            auto target_block = opC.block_index;
-            char* d_base_ptr = static_cast<char*>(m_memory_arena->getRawBlockPointer(target_block));
+            if (target_block_index == -1) {
+                cusparseSpGEMM_destroyDescr(spgemmDesc);
+                cusparseDestroySpMat(matC);
+                m_memory_arena->evictTemporaryBlock(workspace_1);
+                m_memory_arena->evictTemporaryBlock(workspace_2);
+                return CudaMultiplyResult{ MathStatus::OUT_OF_MEMORY_VRAM };
+            }
+
+            char* d_base_ptr = static_cast<char*>(m_memory_arena->getRawBlockPointer(target_block_index));
 
             int* d_C_row_offsets = reinterpret_cast<int*>(d_base_ptr);
             int* d_C_col_indices = reinterpret_cast<int*>(d_C_row_offsets + (C_rows + 1));
@@ -170,19 +181,12 @@ namespace MyMesh {
 
             cusparseSpGEMM_destroyDescr(spgemmDesc);
 
-            if (opC.descriptor != nullptr) {
-                cusparseDestroySpMat(opC.descriptor);
-            }
-
-            opC.descriptor = matC;
-            opC.rows = static_cast<int>(C_rows);
-            opC.cols = static_cast<int>(C_cols);
-            opC.nnz = static_cast<int>(C_nnz);
+            m_memory_arena->commitMatrixToBlock(target_block_index, matC, static_cast<int>(C_rows), static_cast<int>(C_cols), static_cast<int>(C_nnz));
 
             m_memory_arena->evictTemporaryBlock(workspace_1);
             m_memory_arena->evictTemporaryBlock(workspace_2);
 
-            return MathStatus::SUCCESS;
+            return CudaMultiplyResult{ MathStatus::SUCCESS, target_block_index };
 
         }
     } 

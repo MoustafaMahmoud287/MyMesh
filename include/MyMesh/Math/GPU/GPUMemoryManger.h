@@ -8,6 +8,7 @@ namespace MyMesh {
         class CudaMemoryArena {
 
         public:
+
             CudaMemoryArena(BlockCounterType num_persistent_blocks, BlockCounterType num_scratchpad_blocks, size_t block_size_bytes);
             ~CudaMemoryArena();
 
@@ -17,6 +18,7 @@ namespace MyMesh {
             void evictMesh(uint64_t mesh_id);
 
             BlockCounterType getTemporaryBlock();
+            BlockCounterType emptyTemporaryBlockCount();
             bool evictTemporaryBlock(BlockCounterType block_index);
             void resetTemporaryBlocks();
 
@@ -24,6 +26,8 @@ namespace MyMesh {
             const CudaOperatorDescriptor* getDescriptor(uint64_t mesh_id, OperatorType type) const;
             const CudaOperatorDescriptor* getDescriptor(BlockCounterType block_index) const;
             size_t getBlockSize() const;
+
+            void commitMatrixToBlock(BlockCounterType block_index, cusparseSpMatDescr_t new_mat, int rows, int cols, int nnz);
 
             CPUSparseMatrix downloadMatrix(BlockCounterType block_index) const;
 

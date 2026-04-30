@@ -11,12 +11,7 @@ namespace MyMesh {
             ComputeEngine(Strategy str, int BlockSizeinMB_Or_PersistentBlockCount, int TempBlockCount = MIN_BLOCKS_NUM, int deviceID = DEFAULT_ID);
             ~ComputeEngine() = default;
 
-            CPUSparseMatrix multiply(
-                const CPUSparseMatrix& A,
-                const CPUSparseMatrix& B,
-                uint64_t id_A = TRANSIENT_ID,uint64_t version_A = TRANSIENT_ID, OperatorType type_A = OperatorType::OTHER,
-                uint64_t id_B = TRANSIENT_ID,uint64_t version_B = TRANSIENT_ID, OperatorType type_B = OperatorType::OTHER
-            );
+            std::optional<CPUSparseMatrix> multiply(const ComputeOperand& A, const ComputeOperand& B, ComputeTarget& Target);
 
         private:
 

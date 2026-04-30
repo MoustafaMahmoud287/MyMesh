@@ -13,11 +13,13 @@ namespace MyMesh {
 
 
             for (auto i = 0; i < total_blocks; ++i) {
+                
                 CudaMemoryBlock block;
+                
                 block.is_free = true;
                 block.capacity_bytes = block_size_bytes;
-
                 block.is_scratchpad = (i >= num_persistent_blocks);
+                block.timeline_iterator = m_lru_block_timeline.end();
 
                 cudaError_t err = cudaMalloc(&block.d_raw_memory, block_size_bytes);
 
@@ -38,7 +40,7 @@ namespace MyMesh {
 
             m_free_temp_blocks.reserve(m_num_scratchpad_blocks);
 
-            for (int i = num_persistent_blocks; i < total_blocks; i++) {
+            for (int i = total_blocks - 1; i >= num_persistent_blocks; i--) {
                 m_free_temp_blocks.push_back(i);
             }
         }
@@ -46,10 +48,17 @@ namespace MyMesh {
         CudaMemoryArena::~CudaMemoryArena() {
 
             for (auto block : m_memory_pool) {
+
+                if (block.current_descriptor.descriptor != nullptr) {
+                    cusparseDestroySpMat(block.current_descriptor.descriptor);
+                    block.current_descriptor.descriptor = nullptr;
+                }
+
                 if (block.d_raw_memory != nullptr) {
                     cudaFree(block.d_raw_memory);
                     block.d_raw_memory = nullptr;
                 }
+
             }
 
         }
@@ -58,13 +67,13 @@ namespace MyMesh {
 
             CacheKey key{ mesh_id, type };
             auto it = m_matrix_cache.find(key);
-            if (it != m_matrix_cache.end()) { return it->second.version == version; }
+            if (it != m_matrix_cache.end()) { return m_memory_pool[it->second].current_version == version; }
             return false;
 
         }
 
-        bool CudaMemoryArena::uploadAndCache(uint64_t mesh_id, uint64_t version, OperatorType type, const CPUSparseMatrix& cpu_matrix)
-        {
+        bool CudaMemoryArena::uploadAndCache(uint64_t mesh_id, uint64_t version, OperatorType type, const CPUSparseMatrix& cpu_matrix) {
+
             const_cast<CPUSparseMatrix&>(cpu_matrix).makeCompressed();
 
             size_t needed_bytes = (cpu_matrix.nonZeros() * sizeof(float)) + (cpu_matrix.nonZeros() * sizeof(int)) + ((cpu_matrix.rows() + 1) * sizeof(int));
@@ -78,25 +87,28 @@ namespace MyMesh {
             auto it = m_matrix_cache.find(key);
 
             if (it != m_matrix_cache.end()) {
-                CudaOperatorDescriptor& desc = it->second;
 
-                if (desc.version == version) {
-                    m_lru_block_timeline.splice(m_lru_block_timeline.begin(), m_lru_block_timeline, desc.timeline_iterator);
+                auto block_index = it->second;
+                auto& block = m_memory_pool[block_index];
+
+                if (block.current_version == version) {
+                    m_lru_block_timeline.splice(m_lru_block_timeline.begin(), m_lru_block_timeline, block.timeline_iterator);
                     return true;
                 }
 
-                if (desc.descriptor != nullptr) {
-                    cusparseDestroySpMat(desc.descriptor);
+                if (block.current_descriptor.descriptor != nullptr) {
+                    cusparseDestroySpMat(block.current_descriptor.descriptor);
+                    block.current_descriptor.descriptor = nullptr;
                 }
 
-                desc.version = version;
-                desc.rows = cpu_matrix.rows();
-                desc.cols = cpu_matrix.cols();
-                desc.nnz = cpu_matrix.nonZeros();
+                block.current_version = version;
+                block.current_descriptor.rows = cpu_matrix.rows();
+                block.current_descriptor.cols = cpu_matrix.cols();
+                block.current_descriptor.nnz = cpu_matrix.nonZeros();
 
-                bindDescriptorToBlock(desc, cpu_matrix, desc.block_index);
+                bindDescriptorToBlock(block.current_descriptor, cpu_matrix, block_index);
 
-                m_lru_block_timeline.splice(m_lru_block_timeline.begin(), m_lru_block_timeline, desc.timeline_iterator);
+                m_lru_block_timeline.splice(m_lru_block_timeline.begin(), m_lru_block_timeline, block.timeline_iterator);
 
                 return true;
             }
@@ -104,56 +116,67 @@ namespace MyMesh {
             if (m_free_persistent_blocks.empty()) {
                 evictOldestBlock();
             }
-            int block_index = m_free_persistent_blocks.back();
+
+            auto block_index = m_free_persistent_blocks.back();
+            auto& block = m_memory_pool[block_index];
             m_free_persistent_blocks.pop_back();
-            m_memory_pool[block_index].is_free = false;
 
-            CudaOperatorDescriptor new_desc;
-            new_desc.block_index = block_index;
-            new_desc.version = version;
-            new_desc.rows = cpu_matrix.rows();
-            new_desc.cols = cpu_matrix.cols();
-            new_desc.nnz = cpu_matrix.nonZeros();
+            block.is_free = false;
+            block.current_version = version;
+            block.current_descriptor.rows = cpu_matrix.rows();
+            block.current_descriptor.cols = cpu_matrix.cols();
+            block.current_descriptor.nnz = cpu_matrix.nonZeros();
 
-            bindDescriptorToBlock(new_desc, cpu_matrix, block_index);
+            bindDescriptorToBlock(block.current_descriptor, cpu_matrix, block_index);
 
             m_lru_block_timeline.push_front(key);
-            new_desc.timeline_iterator = m_lru_block_timeline.begin();
-            m_matrix_cache[key] = new_desc;
+            block.timeline_iterator = m_lru_block_timeline.begin();
+            m_matrix_cache[key] = block_index;
 
             return true;
         }
 
-        BlockCounterType CudaMemoryArena::allocatePersistentBlock(uint64_t mesh_id, OperatorType type)
+        BlockCounterType CudaMemoryArena::allocatePersistentBlock(uint64_t mesh_id, uint64_t version, OperatorType type)
         {
+            // used with multiply so always ovewrite the old result so we dont check version
             CacheKey key{ mesh_id, type };
             auto it = m_matrix_cache.find(key);
 
             if (it != m_matrix_cache.end()) {
-                CudaOperatorDescriptor& desc = it->second;
-                if (desc.descriptor != nullptr) {
-                    cusparseDestroySpMat(desc.descriptor);
-                    desc.descriptor = nullptr; 
+                auto block_index = it->second;
+                auto& block = m_memory_pool[block_index];
+
+                if (block.current_descriptor.descriptor != nullptr) {
+                    cusparseDestroySpMat(block.current_descriptor.descriptor);
+                    block.current_descriptor.descriptor = nullptr;
+                    block.current_descriptor.cols = 0;
+                    block.current_descriptor.rows = 0;
+                    block.current_descriptor.nnz = 0;
                 }
 
-                m_lru_block_timeline.splice(m_lru_block_timeline.begin(), m_lru_block_timeline, desc.timeline_iterator);
-                return desc.block_index;
+                m_lru_block_timeline.splice(m_lru_block_timeline.begin(), m_lru_block_timeline, block.timeline_iterator);
+                block.current_version = version;
+
+                return block_index;
             }
 
             if (m_free_persistent_blocks.empty()) {
                 evictOldestBlock();
+                if (m_free_persistent_blocks.empty()) {
+                    return -1;
+                }
             }
 
             auto block_index = m_free_persistent_blocks.back();
-            m_free_persistent_blocks.pop_back();
-            m_memory_pool[block_index].is_free = false;
+            auto& block = m_memory_pool[block_index];
 
-            CudaOperatorDescriptor empty_desc;
-            empty_desc.block_index = block_index;
+            m_free_persistent_blocks.pop_back();
+            block.is_free = false;
+            block.current_version = version;
 
             m_lru_block_timeline.push_front(key);
-            empty_desc.timeline_iterator = m_lru_block_timeline.begin();
-            m_matrix_cache[key] = empty_desc;
+            block.timeline_iterator = m_lru_block_timeline.begin();
+            m_matrix_cache[key] = block_index;
 
             return block_index;
         }
@@ -167,15 +190,17 @@ namespace MyMesh {
 
                 if (it != m_matrix_cache.end()) {
 
-                    auto& desc = it->second;
-                    if (desc.descriptor != nullptr) {
-                        cusparseDestroySpMat(desc.descriptor);
+                    auto block_index = it->second;
+                    auto& block = m_memory_pool[block_index];
+
+                    if (block.current_descriptor.descriptor != nullptr) {
+                        cusparseDestroySpMat(block.current_descriptor.descriptor);
+                        block.current_descriptor.descriptor = nullptr;
                     }
 
-                    m_lru_block_timeline.erase(desc.timeline_iterator);
-
-                    auto block_index = desc.block_index;
-                    m_memory_pool[block_index].is_free = true;
+                    m_lru_block_timeline.erase(block.timeline_iterator);
+                    block.timeline_iterator = m_lru_block_timeline.end();
+                    block.is_free = true;
                     m_free_persistent_blocks.push_back(block_index);
 
                     m_matrix_cache.erase(it);
@@ -184,20 +209,42 @@ namespace MyMesh {
         }
 
         BlockCounterType CudaMemoryArena::getTemporaryBlock() {
+
             if (m_free_temp_blocks.empty()) return -1;
 
-            BlockCounterType block = m_free_temp_blocks.back();
+            BlockCounterType block_index = m_free_temp_blocks.back();
             m_free_temp_blocks.pop_back();
 
-            m_memory_pool[block].is_free = false;
-            return block;
+            auto& block = m_memory_pool[block_index];
+            block.is_free = false;
+
+            if (block.current_descriptor.descriptor != nullptr) {
+                cusparseDestroySpMat(block.current_descriptor.descriptor);
+                block.current_descriptor.descriptor = nullptr;
+                block.current_descriptor.rows = 0;
+                block.current_descriptor.cols = 0;
+                block.current_descriptor.nnz = 0;
+            }
+
+            return block_index;
         }
 
         bool CudaMemoryArena::evictTemporaryBlock(BlockCounterType block_index) {
             
-            if (m_memory_pool[block_index].is_free) return false;
+            auto& block = m_memory_pool[block_index];
 
-            m_memory_pool[block_index].is_free = true;
+            if (block.is_free) return false;
+
+            block.is_free = true;
+
+            if (block.current_descriptor.descriptor != nullptr) {
+                cusparseDestroySpMat(block.current_descriptor.descriptor);
+                block.current_descriptor.descriptor = nullptr;
+                block.current_descriptor.rows = 0;
+                block.current_descriptor.cols = 0;
+                block.current_descriptor.nnz = 0;
+            }
+
             m_free_temp_blocks.push_back(block_index); 
 
             return true;
@@ -210,25 +257,49 @@ namespace MyMesh {
             auto total_blocks = m_scratchpad_offset + m_num_scratchpad_blocks;
 
             
-            for (int i = m_scratchpad_offset; i < total_blocks; i++) {
-                m_memory_pool[i].is_free = true;
+            for (int i = total_blocks - 1; i >= m_scratchpad_offset; i--) {
+                auto& block = m_memory_pool[i];
+                block.is_free = true;
+                if (block.current_descriptor.descriptor != nullptr) {
+                    cusparseDestroySpMat(block.current_descriptor.descriptor);
+                    block.current_descriptor.descriptor = nullptr;
+                    block.current_descriptor.rows = 0;
+                    block.current_descriptor.cols = 0;
+                    block.current_descriptor.nnz = 0;
+                }
+
                 m_free_temp_blocks.push_back(i);
             }
         }
 
         void* CudaMemoryArena::getRawBlockPointer(BlockCounterType block_index) const {
+
+            if (block_index < 0 || block_index >= m_memory_pool.size()) {
+                return nullptr;
+            }
             return m_memory_pool[block_index].d_raw_memory;
+
         }
 
         const CudaOperatorDescriptor* CudaMemoryArena::getDescriptor(uint64_t mesh_id, OperatorType type) const {
+
             CacheKey key{ mesh_id, type };
             auto it = m_matrix_cache.find(key);
 
             if (it != m_matrix_cache.end()) {
-                return &(it->second); 
+                return &m_memory_pool[it->second].current_descriptor; 
             }
 
             return nullptr; 
+        }
+
+        const CudaOperatorDescriptor* CudaMemoryArena::getDescriptor(BlockCounterType block_index) const {
+            
+            if (block_index < 0 || block_index >= m_memory_pool.size()) {
+                return nullptr;
+            }
+            return &m_memory_pool[block_index].current_descriptor;
+
         }
 
         size_t CudaMemoryArena::getBlockSize()  const {
@@ -244,14 +315,21 @@ namespace MyMesh {
 
             if (it != m_matrix_cache.end()) {
 
-                auto& desc = it->second;
+                auto block_index = it->second;
+                auto& block = m_memory_pool[block_index];
 
-                if (desc.descriptor != nullptr) {
-                    cusparseDestroySpMat(desc.descriptor);
+                if (block.current_descriptor.descriptor != nullptr) {
+                    cusparseDestroySpMat(block.current_descriptor.descriptor);
+                    block.current_descriptor.descriptor = nullptr;
+                    block.current_descriptor.cols = 0;
+                    block.current_descriptor.rows = 0;
+                    block.current_descriptor.nnz = 0;
                 }
 
-                auto block_index = desc.block_index;
-                m_memory_pool[block_index].is_free = true;
+                block.is_free = true;
+                block.current_version = 0;
+                block.timeline_iterator = m_lru_block_timeline.end();
+
                 m_free_persistent_blocks.push_back(block_index);
 
                 m_matrix_cache.erase(it);
@@ -290,31 +368,37 @@ namespace MyMesh {
                 CUDA_R_32F);
         }
 
-        CPUSparseMatrix CudaMemoryArena::downloadMatrix(const CudaOperatorDescriptor& desc) const {
+        CPUSparseMatrix CudaMemoryArena::downloadMatrix(BlockCounterType block_index) const {
 
-            if (desc.block_index < 0 || m_memory_pool[desc.block_index].d_raw_memory == nullptr) {
-                throw std::runtime_error("[CudaMemoryArena] Attempted to download an invalid GPU matrix.");
+            if (block_index < 0 || block_index >= m_memory_pool.size()) {
+                throw std::runtime_error("[CudaMemoryArena] Attempted to download an out-of-bounds GPU matrix.");
             }
 
-            size_t row_bytes = (desc.rows + 1) * sizeof(int);
-            size_t col_bytes = desc.nnz * sizeof(int);
-            size_t val_bytes = desc.nnz * sizeof(float);
+            const auto& block = m_memory_pool[block_index];
 
-            char* d_base_ptr = static_cast<char*>(m_memory_pool[desc.block_index].d_raw_memory);
+            if (block.d_raw_memory == nullptr || block.is_free) {
+                throw std::runtime_error("[CudaMemoryArena] Attempted to download a free or unallocated GPU matrix.");
+            }
+
+            size_t row_bytes = (block.current_descriptor.rows + 1) * sizeof(int);
+            size_t col_bytes = block.current_descriptor.nnz * sizeof(int);
+            size_t val_bytes = block.current_descriptor.nnz * sizeof(float);
+
+            char* d_base_ptr = static_cast<char*>(m_memory_pool[block_index].d_raw_memory);
             int* d_row_offsets = reinterpret_cast<int*>(d_base_ptr);
             int* d_col_indices = reinterpret_cast<int*>(d_base_ptr + row_bytes);
             float* d_values = reinterpret_cast<float*>(d_base_ptr + row_bytes + col_bytes);
 
-            std::vector<int> h_rows(desc.rows + 1);
-            std::vector<int> h_cols(desc.nnz);
-            std::vector<float> h_vals(desc.nnz);
+            std::vector<int> h_rows(block.current_descriptor.rows + 1);
+            std::vector<int> h_cols(block.current_descriptor.nnz);
+            std::vector<float> h_vals(block.current_descriptor.nnz);
 
             cudaMemcpy(h_rows.data(), d_row_offsets, row_bytes, cudaMemcpyDeviceToHost);
             cudaMemcpy(h_cols.data(), d_col_indices, col_bytes, cudaMemcpyDeviceToHost);
             cudaMemcpy(h_vals.data(), d_values, val_bytes, cudaMemcpyDeviceToHost);
 
             CPUMappedSparseMatrix mapped_mat(
-                desc.rows, desc.cols, desc.nnz, h_rows.data(), h_cols.data(), h_vals.data()
+                block.current_descriptor.rows, block.current_descriptor.cols, block.current_descriptor.nnz, h_rows.data(), h_cols.data(), h_vals.data()
             );
 
             CPUSparseMatrix final_matrix = mapped_mat;

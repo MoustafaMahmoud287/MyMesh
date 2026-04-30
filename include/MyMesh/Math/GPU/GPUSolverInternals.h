@@ -62,27 +62,20 @@ namespace MyMesh {
             bool is_scratchpad = false;
             size_t capacity_bytes = 0;
             void* d_raw_memory = nullptr;
+            CudaOperatorDescriptor current_descriptor;
+            uint64_t current_version = 0;
+            std::list<CacheKey>::iterator timeline_iterator;
         };
 
         struct CudaOperatorDescriptor {
-
-            int block_index = -1; 
-            uint64_t version = 0;
-
             cusparseSpMatDescr_t descriptor = nullptr;
-
             int rows = 0;
             int cols = 0;
             int nnz = 0;
-
-            std::list<CacheKey>::iterator timeline_iterator;
-
-            bool is_intermediate = false;
-
         };
 
         using CudaMemoryPool = std::vector<CudaMemoryBlock>;
-        using CudaMatrixCache = std::unordered_map<CacheKey, MathInternal::CudaOperatorDescriptor, CacheKeyHash>;
+        using CudaMatrixCache = std::unordered_map<CacheKey, int, CacheKeyHash>;
         using CacheManeger = std::list<CacheKey>;
         using BlocksStack = std::vector<int>;
         using BlockCounterType = int;

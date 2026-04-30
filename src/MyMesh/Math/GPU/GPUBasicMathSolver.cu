@@ -137,19 +137,21 @@ namespace MyMesh {
                 return MathStatus::OUT_OF_MEMORY_VRAM;
             }
 
-            if (opC.is_intermediate == true) {
-                opC.block_index = m_memory_arena->getTemporaryBlock();
-                if (opC.block_index == -1) {+
-                    cusparseSpGEMM_destroyDescr(spgemmDesc);
-                    cusparseDestroySpMat(matC);
-                    m_memory_arena->evictTemporaryBlock(workspace_1);
-                    m_memory_arena->evictTemporaryBlock(workspace_2);
-                    return MathStatus::OUT_OF_MEMORY_VRAM;
+            if (opC.block_index == -1) {
+                if (opC.is_intermediate == true) {
+                    opC.block_index = m_memory_arena->getTemporaryBlock();
+                    if (opC.block_index == -1) {
+                        cusparseSpGEMM_destroyDescr(spgemmDesc);
+                        cusparseDestroySpMat(matC);
+                        m_memory_arena->evictTemporaryBlock(workspace_1);
+                        m_memory_arena->evictTemporaryBlock(workspace_2);
+                        return MathStatus::OUT_OF_MEMORY_VRAM;
+                    }
                 }
-            }
 
-            else {
-                opC.block_index = m_memory_arena->allocatePersistentBlock(mesh_id, type);
+                else {
+                    opC.block_index = m_memory_arena->allocatePersistentBlock(mesh_id, type);
+                }
             }
 
             auto target_block = opC.block_index;

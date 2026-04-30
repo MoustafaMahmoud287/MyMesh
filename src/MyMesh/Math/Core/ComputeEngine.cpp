@@ -31,7 +31,7 @@ namespace MyMesh {
                 }
 
                 else {
-                    persistent_blocks = (blocks_count * 2) / 3;;
+                    persistent_blocks = (blocks_count * 2) / 3;
                     temporary_blocks = blocks_count - persistent_blocks;
                 }
 
@@ -52,6 +52,8 @@ namespace MyMesh {
 
             m_gpu_enabled = true;
         }
+
+
 
     }
 }

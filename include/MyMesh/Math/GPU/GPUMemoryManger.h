@@ -13,7 +13,7 @@ namespace MyMesh {
 
             bool hasOperator(uint64_t mesh_id, uint64_t version, OperatorType type) const;
             bool uploadAndCache(uint64_t mesh_id, uint64_t version, OperatorType type, const CPUSparseMatrix& cpu_matrix);
-            BlockCounterType allocatePersistentBlock(uint64_t mesh_id, OperatorType type);
+            BlockCounterType allocatePersistentBlock(uint64_t mesh_id, uint64_t version, OperatorType type);
             void evictMesh(uint64_t mesh_id);
 
             BlockCounterType getTemporaryBlock();
@@ -22,9 +22,10 @@ namespace MyMesh {
 
             void* getRawBlockPointer(BlockCounterType block_index) const;
             const CudaOperatorDescriptor* getDescriptor(uint64_t mesh_id, OperatorType type) const;
+            const CudaOperatorDescriptor* getDescriptor(BlockCounterType block_index) const;
             size_t getBlockSize() const;
 
-            CPUSparseMatrix downloadMatrix(const CudaOperatorDescriptor& desc) const;
+            CPUSparseMatrix downloadMatrix(BlockCounterType block_index) const;
 
         private:
 

@@ -73,7 +73,7 @@ int main() {
         std::cout << "\n--- TEST 3: DEC Fundamental Theorem ---" << std::endl;
 
         // Execute math on the CPU
-        CPUSparseMatrix result = solver.multiply(d1, d0);
+        CPUSparseMatrix result = solver.multiply(d1, d0).value_or(CPUSparseMatrix());
 
         // Check if the result is practically zero
         float max_val = result.coeffs().cwiseAbs().maxCoeff(); // Get largest value in the matrix

@@ -376,7 +376,7 @@ namespace MyMesh {
             
             auto& block = m_memory_pool[block_index];
 
-            /
+            
             if (block.current_descriptor.descriptor != nullptr && block.current_descriptor.descriptor != new_mat) {
                 cusparseDestroySpMat(block.current_descriptor.descriptor);
             }

@@ -131,14 +131,13 @@ namespace MyMesh {
 
                         const auto* opA = temp_arena.getDescriptor(999, MyMesh::MathInternal::OperatorType::D0);
                         const auto* opB = temp_arena.getDescriptor(999, MyMesh::MathInternal::OperatorType::D1);
-                        MyMesh::MathInternal::CudaOperatorDescriptor opC; opC.is_intermediate = false;
 
-                        MyMesh::MathInternal::MathStatus status = gpu_solver.multiply(*opA, *opB, opC, 999, MyMesh::MathInternal::OperatorType::OTHER);
-                        if (status != MyMesh::MathInternal::MathStatus::SUCCESS) {
+                        auto result = gpu_solver.multiply(*opA, *opB, MyMesh::MathInternal::CudaSaveOptions::PERSISTENT_BLOCK, 999,0, MyMesh::MathInternal::OperatorType::OTHER);
+                        if (result.status != MyMesh::MathInternal::MathStatus::SUCCESS) {
                             gpu_failed_count++;
                         }
                         else {
-                            auto res = temp_arena.downloadMatrix(opC);
+                            auto res = temp_arena.downloadMatrix(result.resultBlock);
 
                             auto end_gpu = std::chrono::high_resolution_clock::now();
                             total_gpu_ms += std::chrono::duration<double, std::milli>(end_gpu - start_gpu).count();

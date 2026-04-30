@@ -62,6 +62,13 @@ namespace MyMesh {
             }
         };
 
+        struct CudaOperatorDescriptor {
+            cusparseSpMatDescr_t descriptor = nullptr;
+            int rows = 0;
+            int cols = 0;
+            int nnz = 0;
+        };
+
         struct CudaMemoryBlock {
             bool is_free = true;
             bool is_scratchpad = false;
@@ -72,16 +79,10 @@ namespace MyMesh {
             std::list<CacheKey>::iterator timeline_iterator;
         };
 
-        struct CudaOperatorDescriptor {
-            cusparseSpMatDescr_t descriptor = nullptr;
-            int rows = 0;
-            int cols = 0;
-            int nnz = 0;
-        };
 
         struct CudaMultiplyResult {
             MathStatus status;
-            BlockCounterType resultBlock = -1;
+            int resultBlock = -1;
         };
 
         using CudaMemoryPool = std::vector<CudaMemoryBlock>;

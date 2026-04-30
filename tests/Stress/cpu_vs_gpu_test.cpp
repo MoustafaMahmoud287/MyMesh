@@ -74,7 +74,7 @@ int main() {
             // --- 2. THE CPU MATH TIMER ---
             auto start_cpu = std::chrono::high_resolution_clock::now();
 
-            CPUSparseMatrix cpu_result = cpu_solver.multiply(cpu_A, cpu_B);
+            CPUSparseMatrix cpu_result = cpu_solver.multiply(cpu_A, cpu_B).value_or(CPUSparseMatrix());
 
             auto end_cpu = std::chrono::high_resolution_clock::now();
             double pure_cpu_ms = std::chrono::duration<double, std::milli>(end_cpu - start_cpu).count();
@@ -93,25 +93,24 @@ int main() {
             const CudaOperatorDescriptor* opA = gpu_arena.getDescriptor(dummy_id, OperatorType::D0);
             const CudaOperatorDescriptor* opB = gpu_arena.getDescriptor(dummy_id, OperatorType::D1);
 
-            CudaOperatorDescriptor opC;
-            opC.is_intermediate = false;
+            
 
             // --- 3. THE GPU MATH TIMER ---
             auto start_gpu = std::chrono::high_resolution_clock::now();
 
-            MathStatus status = gpu_solver.multiply(*opA, *opB, opC, dummy_id, OperatorType::OTHER);
+            auto result = gpu_solver.multiply(*opA, *opB, MyMesh::MathInternal::CudaSaveOptions::PERSISTENT_BLOCK, dummy_id,0, OperatorType::OTHER);
 
             auto end_gpu = std::chrono::high_resolution_clock::now();
             double gpu_math_ms = std::chrono::duration<double, std::milli>(end_gpu - start_gpu).count();
             // ----------------------------------------------------------
 
-            if (status != MathStatus::SUCCESS) {
+            if (result.status != MathStatus::SUCCESS) {
                 std::cout << "[ITER " << iteration << "] Skipped: cuSPARSE aborted (Memory/Hardware limit).\n";
                 gpu_arena.evictMesh(dummy_id);
                 continue;
             }
 
-            CPUSparseMatrix gpu_result = gpu_arena.downloadMatrix(opC);
+            CPUSparseMatrix gpu_result = gpu_arena.downloadMatrix(result.resultBlock);
 
             if (cpu_result.nonZeros() != gpu_result.nonZeros()) {
                 std::cout << "\n[CRITICAL FAILURE] Iteration " << iteration << "\n";

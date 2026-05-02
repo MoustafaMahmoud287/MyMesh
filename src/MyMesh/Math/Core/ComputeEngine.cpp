@@ -46,7 +46,9 @@ namespace MyMesh {
             }
 
             std::cout << "[ComputeEngine] Initializing GPU Arena. Block Size: " << (final_block_size / (1024 * 1024)) << " MB\n";
-            
+            std::cout << "[ComputeEngine] Initializing GPU Arena. Number of Persistent Blocks: " << persistent_blocks << "\n";
+            std::cout << "[ComputeEngine] Initializing GPU Arena. Number of Temporary Blocks: " << temporary_blocks << "\n";
+
             m_arena = std::make_unique<CudaMemoryArena>(persistent_blocks, temporary_blocks, final_block_size);
             m_gpu_solver = std::make_unique<CudaSolver>(m_arena.get());
 
@@ -63,6 +65,14 @@ namespace MyMesh {
             }
 
             if ((A.cpu_matrix == nullptr && A.gpu_block_index == -1) || (B.cpu_matrix == nullptr && B.gpu_block_index == -1)) return std::nullopt;
+
+            if (A.cpu_matrix != nullptr && B.cpu_matrix != nullptr) {
+                size_t needed_bytes_A = (A.cpu_matrix->nonZeros() * sizeof(float)) + (A.cpu_matrix->nonZeros() * sizeof(int)) + ((A.cpu_matrix->rows() + 1) * sizeof(int));
+                size_t needed_bytes_B = (B.cpu_matrix->nonZeros() * sizeof(float)) + (B.cpu_matrix->nonZeros() * sizeof(int)) + ((B.cpu_matrix->rows() + 1) * sizeof(int));
+
+                if(needed_bytes_A < m_hardware_specs.m_gpu_limits.MinSizeToRunGPU && needed_bytes_B < m_hardware_specs.m_gpu_limits.MinSizeToRunGPU)
+                    return m_cpu_solver.multiply(*A.cpu_matrix, *B.cpu_matrix);
+            }
 
             auto save = Target.is_intermediate ? CudaSaveOptions::SCRATCHPAD_BLOCK : CudaSaveOptions::PERSISTENT_BLOCK;
             auto needed_blocks = (save == CudaSaveOptions::SCRATCHPAD_BLOCK) ? 3 : 2;
